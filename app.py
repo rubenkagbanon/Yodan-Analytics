@@ -442,7 +442,7 @@ with m2:
     menu_button("QVT", "", "#F5A623", "4_QVT.py")
 
 with m3:
-    menu_button("WHO · PSS-10", "", "#7C3AED", "6_WHO_PSS10.py")
+    menu_button("WHO · PSS-10", "", "#7C3AED", "6_WHO.py")
     menu_button("SST", "", "#E67E22", "5_SST.py")
 
 # ════════════════════════════════════════════════════════════

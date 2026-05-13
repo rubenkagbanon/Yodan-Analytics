@@ -1,5 +1,5 @@
 # =============================================================================
-# 4_QVT.py — QVT - Qualité de Vie au Travail
+# 6_WHO_PSS10.py — WHO-5 · PSS-10 — Bien-être & Stress Perçu
 # Page d'analyse avec upload de fichier et KPIs généraux
 # Style KPI uniforme et flexible (template yodan_view_mode.py)
 # =============================================================================
@@ -54,93 +54,30 @@ except ImportError:
 
 
 # =============================================================================
-# CONFIGURATION DE LA PAGE QVT
+# CONFIGURATION DE LA PAGE
 # =============================================================================
-PAGE_TITLE = "QVT — Qualité de Vie au Travail"
-PAGE_ICON = "❤️"
-PAGE_KEY = "qvt_view_mode"
+PAGE_TITLE = "WHO-5 · PSS-10 — Bien-être & Stress Perçu"
+PAGE_ICON = "🧘"
+PAGE_KEY = "who5_pss10_view_mode"
 
 # ══════════════════════════════════════════════════════════
-# QUESTIONS & DOMAINES QVT
+# QUESTIONS PSS-10 (détectées via fuzzy matching)
 # ══════════════════════════════════════════════════════════
-QUESTIONS = [
-    "Je comprends clairement mes missions.",
-    "Je dispose des moyens nécessaires pour faire mon travail.",
-    "Je peux exprimer mon point de vue au travail.",
-    "Je suis reconnu(e) pour le travail bien fait.",
-    "Mon travail a du sens pour moi.",
-    "Je suis écouté(e) par ma hiérarchie.",
-    "J'ai un bon équilibre entre vie privée et professionnelle.",
-    "J'ai des relations de qualité avec mes collègues.",
-    "Je peux évoluer dans mon poste.",
-    "Mon environnement de travail est sain et sécurisé.",
-    "J'ai des pauses suffisantes pendant ma journée.",
-    "Je reçois des informations utiles pour bien travailler.",
-    "Je participe aux décisions qui concernent mon travail.",
-    "Mon travail est compatible avec mes valeurs.",
-    "Je ressens de la fierté dans ce que je fais.",
-    "Mon travail est stimulant.",
-    "Les horaires sont compatibles avec ma vie personnelle.",
-    "Mon manager me soutient en cas de difficulté.",
-    "Je me sens à l'aise dans mon équipe.",
-    "Je me sens utile dans mon organisation.",
-]
-
-RENOMMED_QUESTIONS = {
-    "Je comprends clairement mes missions.": "Clarté des missions",
-    "Je dispose des moyens nécessaires pour faire mon travail.": "Disponibilité des moyens nécessaires",
-    "Je peux exprimer mon point de vue au travail.": "Liberté d'expression",
-    "Je suis reconnu(e) pour le travail bien fait.": "Reconnaissance du travail bienfait",
-    "Mon travail a du sens pour moi.": "Sens du travail personnel",
-    "Je suis écouté(e) par ma hiérarchie.": "Écoute hiérarchique",
-    "J'ai un bon équilibre entre vie privée et professionnelle.": "Équilibre de vie",
-    "J'ai des relations de qualité avec mes collègues.": "Bonnes relations entre collègues",
-    "Je peux évoluer dans mon poste.": "Évolution professionnelle",
-    "Mon environnement de travail est sain et sécurisé.": "Environnement sain et sécurisé",
-    "J'ai des pauses suffisantes pendant ma journée.": "Pauses suffisantes",
-    "Je reçois des informations utiles pour bien travailler.": "Informations utiles",
-    "Je participe aux décisions qui concernent mon travail.": "Participation aux décisions",
-    "Mon travail est compatible avec mes valeurs.": "Reflète mes valeurs",
-    "Je ressens de la fierté dans ce que je fais.": "Fierté au travail",
-    "Mon travail est stimulant.": "Travail stimulant",
-    "Les horaires sont compatibles avec ma vie personnelle.": "Horaires compatibles",
-    "Mon manager me soutient en cas de difficulté.": "Soutien du manager",
-    "Je me sens à l'aise dans mon équipe.": "Intégration dans l'équipe",
-    "Je me sens utile dans mon organisation.": "Utilité dans l'organisation",
+PSS_ITEMS = {
+    "Q1": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_ete_contrarie_par_un_evenement_inattendu",
+    "Q2": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_incable_de_controler_les_choses_importantes_dans_votre_vie",
+    "Q3": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_nerveux_ou_stresse",
+    "Q4": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_le_sentiment_de_bien_maitriser_les_choses",
+    "Q5": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_senti_que_les_difficultes_s_accumulaient_au_point_de_ne_plus_pouvoir_les_surmonter",
+    "Q6": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_confiance_en_votre_capacite_a_resoudre_vos_problemes_personnels",
+    "Q7": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_estime_que_les_choses_allaient_comme_vous_le_vouliez",
+    "Q8": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_le_sentiment_que_vous_ne_pouviez_pas_maitriser_toutes_les_choses_que_vous_aviez_a_faire",
+    "Q9": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_pu_controler_vos_difficultes",
+    "Q10": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_depasse_par_les_evenements",
 }
 
-SCORE_GROUPS = {
-    "Sens du Travail": [
-        "Mon travail a du sens pour moi.",
-        "Mon travail est compatible avec mes valeurs.",
-        "Je ressens de la fierté dans ce que je fais.",
-        "Mon travail est stimulant.",
-        "Je me sens utile dans mon organisation.",
-    ],
-    "Relations Interpersonnelles": [
-        "Je peux exprimer mon point de vue au travail.",
-        "Je suis écouté(e) par ma hiérarchie.",
-        "J'ai des relations de qualité avec mes collègues.",
-        "Mon manager me soutient en cas de difficulté.",
-        "Je me sens à l'aise dans mon équipe.",
-    ],
-    "Santé & Environnement": [
-        "Je comprends clairement mes missions.",
-        "Je dispose des moyens nécessaires pour faire mon travail.",
-        "Mon environnement de travail est sain et sécurisé.",
-        "Je reçois des informations utiles pour bien travailler.",
-    ],
-    "Reconnaissance & Évolution": [
-        "Je suis reconnu(e) pour le travail bien fait.",
-        "Je peux évoluer dans mon poste.",
-        "Je participe aux décisions qui concernent mon travail.",
-    ],
-    "Équilibre de Vie": [
-        "J'ai un bon équilibre entre vie privée et professionnelle.",
-        "J'ai des pauses suffisantes pendant ma journée.",
-        "Les horaires sont compatibles avec ma vie personnelle.",
-    ],
-}
+# Items inversés (Q4, Q5, Q7, Q8)
+PSS_INVERTED = ["Q4", "Q5", "Q7", "Q8"]
 
 # ══════════════════════════════════════════════════════════
 # VARIABLES UNIFORMES POUR LES ANALYSES UNIVARIÉES
@@ -165,39 +102,21 @@ VARIABLES_UNIVARIEES = [
 ]
 
 VARIABLES_SPECIFIQUES = [
-    ("Niveau de satisfaction", "niveau_satisfaction"),
+    ("Niveau de stress (PSS-10)", "niveau_stress"),
 ]
 
 # =============================================================================
 # CSS INLINE DE LA PAGE
 # =============================================================================
 def get_page_css() -> str:
-    """CSS spécifique à la page QVT."""
     return """
     <style>
-        .qvt-gauge {
+        .stress-box {
             background: #FFFFFF;
             border: 1px solid #E3EAF4;
             border-radius: 12px;
             padding: 16px;
             text-align: center;
-        }
-        .qvt-gauge-label {
-            font-size: 10px;
-            color: #94A3B8;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin: 0 0 8px;
-        }
-        .qvt-gauge-value {
-            font-size: 28px;
-            font-weight: 800;
-            margin: 0;
-        }
-        .qvt-gauge-sub {
-            font-size: 11px;
-            color: #94A3B8;
-            margin: 4px 0 0;
         }
     </style>
     """
@@ -264,6 +183,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
             ops.append(f"Colonne '{c}' supprimée ({missing_ratio[c]*100:.1f}% NA)")
         cleaned_df = cleaned_df.drop(columns=cols_to_drop)
 
+    # ÂGE
     age_col = _find_age_numeric_col(cleaned_df)
     if age_col is not None:
         cleaned_df['age'] = pd.to_numeric(cleaned_df[age_col], errors="coerce")
@@ -284,6 +204,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
         else:
             ops.append("Âge: aucune colonne trouvée")
 
+    # ANCIENNETÉ
     anciennete_num_col = _find_by_patterns(list(cleaned_df.columns), [r"anciennete", r"anciennet"])
     if anciennete_num_col is not None:
         if pd.api.types.is_numeric_dtype(cleaned_df[anciennete_num_col]):
@@ -308,6 +229,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
         )
         ops.append("Colonne 'Tranche_anciennete' créée")
 
+    # GENRE
     genre_col = _find_by_patterns(list(cleaned_df.columns), [r"\bgenre\b", r"\bsexe\b"])
     if genre_col is not None:
         def std_genre(v):
@@ -319,6 +241,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
         cleaned_df['genre'] = cleaned_df[genre_col].apply(std_genre)
         ops.append(f"Colonne 'genre' standardisée depuis: {genre_col}")
 
+    # IMC
     poids_col = _find_by_patterns(list(cleaned_df.columns), [r"\bpoids\b"])
     taille_col = _find_by_patterns(list(cleaned_df.columns), [r"\btaille\b"])
     if poids_col is not None and taille_col is not None:
@@ -338,6 +261,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
         )
         ops.append("Colonne 'imc', 'Categorie_IMC' et 'IMC_binaire' calculées")
 
+    # COLONNES ORGANISATIONNELLES
     for std_name, patterns in [
         ('direction', [r"direction"]), ('fonction', [r"fonction"]),
         ('service', [r"service"]), ('departement', [r"departement", r"département", r"dept"]),
@@ -348,6 +272,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
                 cleaned_df[std_name] = cleaned_df[found].astype(str)
                 ops.append(f"Colonne '{std_name}' détectée: {found}")
 
+    # FACTEURS DE RISQUE
     for std_name, patterns in [
         ('tabagisme', [r"tabag", r"tabac", r"fumeur"]),
         ('consommation_alcool', [r"alcool", r"consommation.*alcool"]),
@@ -377,23 +302,31 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
 
 
 # =============================================================================
-# FONCTIONS DE DÉTECTION QVT
+# FONCTIONS DE DÉTECTION PSS-10
 # =============================================================================
 
-def normaliser_texte(texte: str) -> str:
-    t = str(texte).strip().lower()
-    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9]+", "", t)
-
-
-def trouver_colonne_qvt(df: pd.DataFrame, question_text: str) -> str | None:
+def trouver_colonne_pss(df: pd.DataFrame, item_key: str) -> str | None:
+    """Trouve la colonne correspondant à un item PSS-10."""
+    question_text = PSS_ITEMS.get(item_key)
+    if question_text is None:
+        return None
+    
+    # Chercher d'abord par nom exact
     if question_text in df.columns:
         return question_text
-    target = normaliser_texte(question_text)
+    
+    # Chercher par pattern Q1..Q10
+    for col in df.columns:
+        col_norm = _pp_normalize_text(col)
+        if item_key.lower() in col_norm:
+            return col
+    
+    # Fuzzy matching
+    target = _pp_normalize_text(question_text)
     best_col = None
     best_score = -1.0
     for col in df.columns:
-        col_norm = normaliser_texte(col)
+        col_norm = _pp_normalize_text(col)
         score = SequenceMatcher(None, target, col_norm).ratio()
         if score > best_score:
             best_score = score
@@ -401,31 +334,44 @@ def trouver_colonne_qvt(df: pd.DataFrame, question_text: str) -> str | None:
     return best_col if (best_col is not None and best_score >= 0.4) else None
 
 
-def resolve_questions(df: pd.DataFrame) -> dict:
-    return {q: trouver_colonne_qvt(df, q) for q in QUESTIONS if trouver_colonne_qvt(df, q)}
-
-
-def compute_scores(df: pd.DataFrame, question_map: dict) -> pd.DataFrame:
+def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
+    """Calcule le score PSS-10 avec inversion des items positifs."""
     out = df.copy()
-    for score_name, qs in SCORE_GROUPS.items():
-        cols = [question_map[q] for q in qs if q in question_map]
-        if cols:
-            out[score_name] = out[cols].apply(pd.to_numeric, errors="coerce").mean(axis=1)
-    q_cols = list(question_map.values())
-    if q_cols:
-        out["Score_Global"] = out[q_cols].apply(pd.to_numeric, errors="coerce").mean(axis=1)
+    
+    # Résoudre les colonnes
+    pss_cols = {}
+    for key in PSS_ITEMS:
+        col = trouver_colonne_pss(out, key)
+        if col:
+            pss_cols[key] = col
+            out[f"pss_{key}"] = pd.to_numeric(out[col], errors="coerce")
+    
+    if not pss_cols:
+        return out
+    
+    # Inverser les items positifs (Q4, Q5, Q7, Q8)
+    for inv_key in PSS_INVERTED:
+        if inv_key in pss_cols:
+            out[f"pss_{inv_key}"] = 4 - out[f"pss_{inv_key}"]
+    
+    # Calculer le score total
+    score_cols = [f"pss_{k}" for k in pss_cols]
+    out["score_stress"] = out[score_cols].sum(axis=1)
+    
+    # Catégoriser le niveau de stress
+    def cat_stress(s):
+        if pd.isna(s):
+            return "Non défini"
+        if s >= 27:
+            return "Stress sévère"
+        elif s >= 20:
+            return "Stress modéré"
+        else:
+            return "Stress faible"
+    
+    out["niveau_stress"] = out["score_stress"].apply(cat_stress)
+    
     return out
-
-
-def compute_score_normalise(df: pd.DataFrame, cols: list) -> float:
-    if not cols:
-        return None
-    available_cols = [c for c in cols if c in df.columns]
-    if not available_cols:
-        return None
-    valeurs = df[available_cols].apply(pd.to_numeric, errors='coerce')
-    moyenne = valeurs.mean(axis=1).mean()
-    return round((moyenne - 1) / 3 * 100, 1)
 
 
 # =============================================================================
@@ -569,94 +515,75 @@ def load_data_from_bytes(file_bytes: bytes, file_name: str) -> pd.DataFrame:
 # FONCTIONS DE RENDU PAR ONGLET
 # =============================================================================
 
-def render_tab_overview(df, mode, n_before, question_map):
-    """Onglet Vue d'ensemble - KPIs et indicateurs."""
+def render_tab_overview(df, mode, n_before):
+    """Onglet Vue d'ensemble - KPIs et indicateurs WHO-5 · PSS-10."""
     st.markdown('<div class="section-title">Données Générales de la Population</div>', unsafe_allow_html=True)
     render_kpi_row(df, n_before_cleaning=n_before)
 
+    n = len(df)
+    
+    # Calculs PSS-10
+    score_moyen = df["score_stress"].mean() if "score_stress" in df.columns else None
+    pct_severe = (df["niveau_stress"] == "Stress sévère").sum() / n * 100 if "niveau_stress" in df.columns else None
+    
+    # Sentiment de contrôle (moyenne des items inversés normalisée)
+    controle_cols = [c for c in df.columns if c.startswith("pss_Q") and c[-1] in ["4", "5", "7", "8"]]
+    controle_moyen = df[controle_cols].mean().mean() if controle_cols else None
+    controle_pct = (1 - controle_moyen / 4) * 100 if controle_moyen is not None else None
+
+    # ══════════════════════════════════════════════════════════
+    # INDICATEURS RH/DG
+    # ══════════════════════════════════════════════════════════
     if is_rh(mode):
         st.markdown('<div class="section-title">Indicateurs RH/DG</div>', unsafe_allow_html=True)
 
-        score_cols_global = [d for d in ["Sens du Travail", "Relations Interpersonnelles", "Équilibre de Vie", "Reconnaissance & Évolution", "Santé & Environnement"] if d in df.columns]
-        indice_global = compute_score_normalise(df, score_cols_global)
-
-        rel_cols = [trouver_colonne_qvt(df, q) for q in ["Je peux exprimer mon point de vue au travail.", "Je suis écouté(e) par ma hiérarchie.", "J'ai des relations de qualité avec mes collègues."]]
-        qualite_rel = compute_score_normalise(df, [c for c in rel_cols if c])
-
-        sens_cols = [trouver_colonne_qvt(df, q) for q in ["Mon travail a du sens pour moi.", "Mon travail est compatible avec mes valeurs.", "Je ressens de la fierté dans ce que je fais.", "Mon travail est stimulant.", "Je me sens utile dans mon organisation."]]
-        sens_travail = compute_score_normalise(df, [c for c in sens_cols if c])
-
-        egalite_cols = [trouver_colonne_qvt(df, q) for q in ["Je suis reconnu(e) pour le travail bien fait.", "Je participe aux décisions qui concernent mon travail."]]
-        egalite_percue = compute_score_normalise(df, [c for c in egalite_cols if c])
-
-        conditions_cols = [trouver_colonne_qvt(df, q) for q in ["Je comprends clairement mes missions.", "Je dispose des moyens nécessaires pour faire mon travail.", "Mon environnement de travail est sain et sécurisé.", "Je reçois des informations utiles pour bien travailler."]]
-        conditions_travail = compute_score_normalise(df, [c for c in conditions_cols if c])
-
         indicateurs_rh = [
-            {"nom": "Indice global QVT", "valeur": f"{indice_global:.1f}" if indice_global is not None else "N/A", "seuil": "> 60% (ANACT)", "priorite_type": "levier"},
-            {"nom": "Qualité des relations de travail", "valeur": f"{qualite_rel:.1f}" if qualite_rel is not None else "N/A", "seuil": "< 50% critique", "priorite_type": "vigilance"},
-            {"nom": "Contenu et sens du travail", "valeur": f"{sens_travail:.1f}" if sens_travail is not None else "N/A", "seuil": "< 50% (Hackman & Oldham)", "priorite_type": "levier"},
-            {"nom": "Égalité professionnelle perçue", "valeur": f"{egalite_percue:.1f}" if egalite_percue is not None else "N/A", "seuil": "< 50% (ISO 45003)", "priorite_type": "vigilance"},
-            {"nom": "Conditions et environnement de travail", "valeur": f"{conditions_travail:.1f}" if conditions_travail is not None else "N/A", "seuil": "< 50% (INRS 2022)", "priorite_type": "risque"},
+            {"nom": "Score stress perçu moyen (PSS-10)", "valeur": f"{score_moyen:.1f}/40" if score_moyen is not None else "N/A", "seuil": "> 20/40", "priorite_type": "risque"},
+            {"nom": "% stress sévère (PSS ≥ 27)", "valeur": f"{pct_severe:.1f}%" if pct_severe is not None else "N/A", "seuil": "> 10% OMS", "priorite_type": "risque"},
+            {"nom": "Sentiment de contrôle perçu", "valeur": f"{controle_pct:.1f}%" if controle_pct is not None else "N/A", "seuil": "< 50%", "priorite_type": "vigilance"},
+            {"nom": "WHO-5 bien-être moyen", "valeur": "N/A", "seuil": "< 50/100", "priorite_type": "vigilance"},
+            {"nom": "Évolution entre vagues (Δ T1→T2)", "valeur": "N/A", "seuil": "Δ > 5 = signal", "priorite_type": "strategique"},
         ]
         cols = st.columns(5)
         for i, indic in enumerate(indicateurs_rh):
             with cols[i]:
                 st.markdown(render_indicator_card(indic["nom"], indic["valeur"], indic["seuil"], "", indic["priorite_type"]), unsafe_allow_html=True)
 
+    # ══════════════════════════════════════════════════════════
+    # INDICATEURS MÉDECIN
+    # ══════════════════════════════════════════════════════════
     if is_medecin(mode):
         st.markdown('<div class="section-title">Indicateurs Médecin du Travail</div>', unsafe_allow_html=True)
 
-        adq_cols = [trouver_colonne_qvt(df, q) for q in ["Je dispose des moyens nécessaires pour faire mon travail.", "Je comprends clairement mes missions."]]
-        adq_score = compute_score_normalise(df, [c for c in adq_cols if c])
-
-        # 2. Charge physique du poste → proxy IMC + ancienneté
-        if 'imc' in df.columns and 'anciennete' in df.columns:
-            imc_vals = pd.to_numeric(df['imc'], errors='coerce').dropna()
-            anc_vals = pd.to_numeric(df['anciennete'], errors='coerce').dropna()
-            
-            if not imc_vals.empty and not anc_vals.empty:
-                imc_med = imc_vals.median()
-                anc_med = anc_vals.median()
-                
-                # IMC : 0 (18.5) → 50 (30+)
-                imc_score = min(max((imc_med - 18.5) / (30 - 18.5) * 50, 0), 50)
-                # Ancienneté : 0 (0 an) → 50 (20+ ans)
-                anc_score = min(anc_med / 20 * 50, 50)
-                
-                charge_score = round(imc_score + anc_score, 1)
-                
-                # Catégorisation
-                if charge_score <= 35:
-                    charge_label = "Faible"
-                    charge_color = "#16A37F"  # vert
-                elif charge_score <= 65:
-                    charge_label = "Modéré"
-                    charge_color = "#F5A623"  # orange
-                else:
-                    charge_label = "Élevé"
-                    charge_color = "#E8504A"  # rouge
-                
-                charge_display = f"{charge_label}"
-            else:
-                charge_display = "N/A"
+        # WHO-5 < 28 prévalence détresse
+        who5_detresse = "N/A"  # À calculer si colonnes WHO-5 disponibles
+        
+        # PSS ≥ 27 stress sévère clinique
+        pss_severe_clinique = f"{pct_severe:.1f}%" if pct_severe is not None else "N/A"
+        
+        # Item Q5 PSS (accumulation difficultés) ≥ 3
+        q5_col = trouver_colonne_pss(df, "Q5")
+        if q5_col:
+            q5_vals = pd.to_numeric(df[q5_col], errors="coerce")
+            pct_q5_eleve = (q5_vals >= 3).sum() / max(q5_vals.notna().sum(), 1) * 100
+            q5_display = f"{pct_q5_eleve:.1f}%"
         else:
-            charge_display = "N/A"
-
-        conflit_cols = [trouver_colonne_qvt(df, q) for q in ["Je participe aux décisions qui concernent mon travail.", "Je comprends clairement mes missions."]]
-        conflit_score = compute_score_normalise(df, [c for c in conflit_cols if c])
-
-        equilibre_cols = [trouver_colonne_qvt(df, q) for q in ["J'ai un bon équilibre entre vie privée et professionnelle.", "J'ai des pauses suffisantes pendant ma journée.", "Les horaires sont compatibles avec ma vie personnelle."]]
-        equilibre_score = compute_score_normalise(df, [c for c in equilibre_cols if c])
-
-        equite_cols = [trouver_colonne_qvt(df, q) for q in ["Je suis reconnu(e) pour le travail bien fait.", "Je peux évoluer dans mon poste."]]
-        equite_score = compute_score_normalise(df, [c for c in equite_cols if c])
+            q5_display = "N/A"
+        
+        # Stress × comportements à risque
+        if "score_stress" in df.columns and "tabagisme" in df.columns:
+            tabac_oui = df["tabagisme"].astype(str).str.lower().isin(['oui', 'yes', '1', 'vrai', 'true'])
+            stress_tabac = ((df["score_stress"] >= 20) & tabac_oui).sum() / max(n, 1) * 100
+            stress_tabac_display = f"{stress_tabac:.1f}%"
+        else:
+            stress_tabac_display = "N/A"
 
         indicateurs_med = [
-            {"nom": "Adéquation des ressources aux tâches", "valeur": f"{adq_score:.1f}" if adq_score is not None else "N/A", "seuil": "< 60/100 (ISO 45003)", "priorite_type": "risque"},
-            {"nom": "Charge physique du poste", "valeur": charge_display, "seuil": "Score composite (INRS 2022)", "priorite_type": "risque"},            {"nom": "Conflit de rôle et ambiguïté", "valeur": f"{conflit_score:.1f}" if conflit_score is not None else "N/A", "seuil": "> 50/100 (Kahn 1964)", "priorite_type": "vigilance"},
-            {"nom": "Équilibre vie pro / privée", "valeur": f"{equilibre_score:.1f}" if equilibre_score is not None else "N/A", "seuil": "< 50/100 (WHO 2019)", "priorite_type": "vigilance"},
-            {"nom": "Reconnaissance et équité (ERI)", "valeur": f"{equite_score:.1f}" if equite_score is not None else "N/A", "seuil": "< 66/100 (Siegrist 1996)", "priorite_type": "risque"},
+            {"nom": "WHO-5 < 28 — prévalence détresse", "valeur": who5_detresse, "seuil": "Tout cas < 28", "priorite_type": "risque"},
+            {"nom": "PSS ≥ 27 — stress sévère clinique", "valeur": pss_severe_clinique, "seuil": "Tout cas ≥ 27", "priorite_type": "risque"},
+            {"nom": "Item Q5 PSS (accumulation difficultés)", "valeur": q5_display, "seuil": "> 30%", "priorite_type": "risque"},
+            {"nom": "Stress × comportements à risque", "valeur": stress_tabac_display, "seuil": "> 15%", "priorite_type": "vigilance"},
+            {"nom": "Suivi longitudinal PSS (Δ T1→T2)", "valeur": "N/A", "seuil": "Δ > 3 = signal", "priorite_type": "vigilance"},
         ]
         cols = st.columns(5)
         for i, indic in enumerate(indicateurs_med):
@@ -668,58 +595,18 @@ def render_tab_analyse(df, mode):
     """Onglet Analyse univariée."""
     st.markdown('<div class="section-title">Analyse univariée</div>', unsafe_allow_html=True)
 
-    # ════════════════ CONSTRUCTION DE VAR_OPTIONS ════════════════
     VAR_OPTIONS = {}
-    
-    # Variables standards
-    for label, col in VARIABLES_UNIVARIEES + VARIABLES_SPECIFIQUES:
+    for label, col in VARIABLES_SPECIFIQUES + VARIABLES_UNIVARIEES:
         if col in df.columns:
             VAR_OPTIONS[label] = col
-    
-    # 5 Domaines QVT (catégorisés en Satisfait/Insatisfait)
-    for domain in SCORE_GROUPS:
-        if domain in df.columns:
-            # Créer une colonne temporaire binaire pour le domaine
-            col_name = f"__dom_{domain}"
-            df[col_name] = df[domain].apply(
-                lambda s: "Satisfait" if pd.notna(s) and s >= 2.5 else ("Insatisfait" if pd.notna(s) else "Non défini")
-            )
-            VAR_OPTIONS[f"Domaine — {domain}"] = col_name
-    
-    # 10 Questions clés
-    QUESTIONS_CLES = [
-        "Mon travail est stimulant.",
-        "Je suis écouté(e) par ma hiérarchie.",
-        "Je participe aux décisions qui concernent mon travail.",
-        "Je dispose des moyens nécessaires pour faire mon travail.",
-        "Je reçois des informations utiles pour bien travailler.",
-        "Je me sens à l'aise dans mon équipe.",
-        "J'ai des pauses suffisantes pendant ma journée.",
-        "Je peux évoluer dans mon poste.",
-        "Je comprends clairement mes missions.",
-        "Les horaires sont compatibles avec ma vie personnelle.",
-    ]
-    
-    question_map_local = resolve_questions(df)
-    for q_text in QUESTIONS_CLES:
-        col = question_map_local.get(q_text) or trouver_colonne_qvt(df, q_text)
-        if col:
-            renamed = RENOMMED_QUESTIONS.get(q_text, q_text)
-            # Créer une colonne temporaire binaire
-            col_name = f"__q_{renamed[:20]}"
-            df[col_name] = pd.to_numeric(df[col], errors="coerce").apply(
-                lambda s: "Satisfait" if pd.notna(s) and s >= 3 else ("Insatisfait" if pd.notna(s) else "Non défini")
-            )
-            VAR_OPTIONS[f"Question — {renamed}"] = col_name
 
-    # ════════════════ AFFICHAGE ════════════════
     if not VAR_OPTIONS:
         st.info("Aucune variable disponible.")
         return
 
     c_sel, _ = st.columns([1, 2])
     with c_sel:
-        sel_label = st.selectbox("Variable à visualiser", list(VAR_OPTIONS.keys()), key="uni_qvt")
+        sel_label = st.selectbox("Variable à visualiser", list(VAR_OPTIONS.keys()), key="uni_who5")
     sel_col = VAR_OPTIONS.get(sel_label)
 
     if sel_col and sel_col in df.columns:
@@ -734,41 +621,15 @@ def render_tab_analyse(df, mode):
         c_chart, c_table = st.columns([7, 3])
         with c_chart:
             pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA", "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
-            satisfaction_colors = {
-                "Très satisfait": "#22C55E", "Satisfait": "#22C55E",
-                "Insatisfait": "#EF4444", "Très insatisfait": "#EF4444",
-                "Élevé": "#22C55E", "Moyen": "#F59E0B", "Faible": "#EF4444",
-                "Non défini": "#94A3B8",
-            }
+            stress_colors = {"Stress faible": "#22C55E", "Stress modéré": "#F59E0B", "Stress sévère": "#EF4444"}
 
             fig = go.Figure()
             for i, (cat, pct, eff) in enumerate(zip(counts_u.index, pcts_u.values, counts_u.values)):
-                bar_color = satisfaction_colors.get(str(cat), pal[i % len(pal)])
-                fig.add_trace(go.Bar(
-                    y=[str(cat)], x=[pct], orientation='h',
-                    marker_color=bar_color, marker=dict(opacity=0.9, line=dict(width=0)),
-                    text=f"{pct:.1f}%  ({int(eff)})",
-                    textposition="outside",
-                    textfont=dict(color="#6B88A8", size=12, family="Plus Jakarta Sans"),
-                    showlegend=False
-                ))
+                bar_color = stress_colors.get(str(cat), pal[i % len(pal)]) if sel_col == "niveau_stress" else pal[i % len(pal)]
+                fig.add_trace(go.Bar(y=[str(cat)], x=[pct], orientation='h', marker_color=bar_color, marker=dict(opacity=0.9, line=dict(width=0)), text=f"{pct:.1f}%  ({int(eff)})", textposition="outside", textfont=dict(color="#6B88A8", size=12, family="Plus Jakarta Sans"), showlegend=False))
 
-            fig.update_layout(
-                plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
-                xaxis=dict(range=[0, max(pcts_u.values)*1.5], title_text="Pourcentage (%)",
-                        showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
-                        showline=True, linecolor="#D6E8F7", zeroline=False,
-                        tickfont=dict(color="#6B88A8", size=11)),
-                yaxis=dict(showgrid=False, showline=False, zeroline=False,
-                        tickfont=dict(color="#0F2340", size=11)),
-                height=max(300, n_bars*55+120),
-                margin=dict(l=20, r=80, t=60, b=40),
-                title=dict(text=f"Répartition selon : {sel_label}",
-                        font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
-                        x=0.5, xanchor="center")
-            )
-            st.plotly_chart(fig, use_container_width=True, key="uni_qvt_plotly")
+            fig.update_layout(plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12), xaxis=dict(range=[0, max(pcts_u.values)*1.5], title_text="Pourcentage (%)", showgrid=True, gridcolor="#EDF5FD", gridwidth=1, showline=True, linecolor="#D6E8F7", zeroline=False, tickfont=dict(color="#6B88A8", size=11)), yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)), height=max(300, n_bars*55+120), margin=dict(l=20, r=80, t=60, b=40), title=dict(text=f"Répartition selon : {sel_label}", font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"), x=0.5, xanchor="center"))
+            st.plotly_chart(fig, use_container_width=True, key="uni_who5_plotly")
 
         with c_table:
             st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">Statistiques</p>', unsafe_allow_html=True)
@@ -782,215 +643,67 @@ def render_tab_analyse(df, mode):
             else:
                 st.caption("Données insuffisantes.")
 
+
 def render_tab_croisement(df, mode):
     """Onglet Analyse bivariée."""
     st.markdown('<div class="section-title">Analyse bivariée</div>', unsafe_allow_html=True)
 
-    # ════════════════ CONSTRUCTION DES OPTIONS ════════════════
-    VAR_CROISE = {}
-    for label, col in VARIABLES_UNIVARIEES:
-        if col in df.columns:
-            VAR_CROISE[label] = col
-
+    VAR_CROISE = {label: col for label, col in VARIABLES_UNIVARIEES if col in df.columns}
+    
     OUTCOME_MAP = {}
-    if "niveau_satisfaction" in df.columns:
-        OUTCOME_MAP["Niveau de satisfaction"] = "niveau_satisfaction"
+    if "niveau_stress" in df.columns:
+        OUTCOME_MAP["Niveau de stress"] = "niveau_stress"
+    if "score_stress" in df.columns:
+        df["score_stress_cat"] = pd.cut(df["score_stress"], bins=[-1, 13, 26, 40], labels=["Faible (0-13)", "Modéré (14-26)", "Sévère (27-40)"])
+        OUTCOME_MAP["Score PSS-10 (catégoriel)"] = "score_stress_cat"
     
-    # Domaines QVT (catégorisés)
-    for domain in SCORE_GROUPS:
-        if domain in df.columns:
-            col_name = f"__bivar_dom_{domain}"
-            df[col_name] = df[domain].apply(
-                lambda s: "Satisfait" if pd.notna(s) and s >= 2.5 else ("Insatisfait" if pd.notna(s) else "Non défini")
-            )
-            OUTCOME_MAP[f"Domaine — {domain}"] = col_name
-    
-    # 10 Questions clés (catégorisées)
-    QUESTIONS_CLES = [
-        "Mon travail est stimulant.",
-        "Je suis écouté(e) par ma hiérarchie.",
-        "Je participe aux décisions qui concernent mon travail.",
-        "Je dispose des moyens nécessaires pour faire mon travail.",
-        "Je reçois des informations utiles pour bien travailler.",
-        "Je me sens à l'aise dans mon équipe.",
-        "J'ai des pauses suffisantes pendant ma journée.",
-        "Je peux évoluer dans mon poste.",
-        "Je comprends clairement mes missions.",
-        "Les horaires sont compatibles avec ma vie personnelle.",
-    ]
-    
-    question_map_local = resolve_questions(df)
-    for q_text in QUESTIONS_CLES:
-        col = question_map_local.get(q_text) or trouver_colonne_qvt(df, q_text)
-        if col:
-            renamed = RENOMMED_QUESTIONS.get(q_text, q_text)
-            col_name = f"__bivar_q_{renamed[:20]}"
-            df[col_name] = pd.to_numeric(df[col], errors="coerce").apply(
-                lambda s: "Satisfait" if pd.notna(s) and s >= 3 else ("Insatisfait" if pd.notna(s) else "Non défini")
-            )
-            OUTCOME_MAP[f"Question — {renamed}"] = col_name
-
     OUTCOME_OPTIONS = {k: v for k, v in OUTCOME_MAP.items() if v in df.columns}
 
     if not VAR_CROISE or not OUTCOME_OPTIONS:
         st.info("Variables insuffisantes pour l'analyse bivariée.")
         return
 
-    # ════════════════ SÉLECTEURS (au-dessus) ════════════════
     cx1, cx2 = st.columns(2)
     with cx1:
         sel_var = st.selectbox("Variable démographique", list(VAR_CROISE.keys()), key="bivar_var")
     with cx2:
         sel_outcome = st.selectbox("Variable de résultat", list(OUTCOME_OPTIONS.keys()), key="bivar_outcome")
 
-    var_col = VAR_CROISE.get(sel_var)
-    out_col = OUTCOME_OPTIONS.get(sel_outcome)
-
+    var_col, out_col = VAR_CROISE.get(sel_var), OUTCOME_OPTIONS.get(sel_outcome)
     if var_col and out_col and var_col in df.columns and out_col in df.columns:
         tmp = df[[var_col, out_col]].dropna()
-        
         if not tmp.empty:
-            # Si c'est un score numérique, on le catégorise
-            if out_col == "Score_Global":
-                tmp["outcome_name"] = pd.cut(
-                    tmp[out_col], bins=[0, 2.5, 3.5, 5],
-                    labels=["Faible", "Moyen", "Élevé"]
-                )
-            elif out_col in [f"__bivar_dom_{d}" for d in SCORE_GROUPS] or out_col.startswith("__bivar_q_"):
-                tmp["outcome_name"] = tmp[out_col]
-            else:
-                tmp["outcome_name"] = tmp[out_col]
-            
-            ct = pd.crosstab(tmp[var_col].astype(str), tmp["outcome_name"].astype(str))
+            ct = pd.crosstab(tmp[var_col].astype(str), tmp[out_col].astype(str))
             pct = ct.div(ct.sum(axis=1), axis=0) * 100
 
-            # ════════════════ GRAPHIQUE À GAUCHE + TABLEAU/INTERPRÉTATION À DROITE ════════════════
-            c_chart, c_right = st.columns([7, 3])
-
+            c_chart, c_table = st.columns([7, 3])
             with c_chart:
-                colors_map = {
-                    "Satisfait": "#22C55E", "Insatisfait": "#EF4444",
-                    "Faible": "#EF4444", "Moyen": "#F59E0B", "Élevé": "#22C55E",
-                    "Très satisfait": "#22C55E", "Très insatisfait": "#EF4444",
-                    "Non défini": "#94A3B8",
-                }
-                gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
-                        "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
+                colors_map = {"Stress faible": "#22C55E", "Stress modéré": "#F59E0B", "Stress sévère": "#EF4444",
+                             "Faible (0-13)": "#22C55E", "Modéré (14-26)": "#F59E0B", "Sévère (27-40)": "#EF4444"}
+                gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA", "#06B6D4", "#FB923C", "#84CC16"]
 
                 fig = go.Figure()
                 for i, cat in enumerate(pct.columns):
-                    vals = pct[cat].values
-                    ns = ct[cat].values
+                    vals, ns = pct[cat].values, ct[cat].values
                     txts = [f"{v:.1f}%  ({n})" if v >= 5 else "" for v, n in zip(vals, ns)]
                     color = colors_map.get(str(cat), gen_pal[i % len(gen_pal)])
+                    fig.add_trace(go.Bar(name=str(cat), y=list(pct.index), x=vals, orientation='h', marker_color=color, marker=dict(opacity=0.9, line=dict(width=0)), text=txts, textposition="inside", insidetextanchor="middle", textfont=dict(color="white", size=11, family="Plus Jakarta Sans")))
 
-                    fig.add_trace(go.Bar(
-                        name=str(cat),
-                        y=list(pct.index), x=vals,
-                        orientation='h',
-                        marker_color=color,
-                        marker=dict(opacity=0.9, line=dict(width=0)),
-                        text=txts,
-                        textposition="inside",
-                        insidetextanchor="middle",
-                        textfont=dict(color="white", size=11, family="Plus Jakarta Sans")
-                    ))
-
-                fig.update_layout(
-                    barmode="stack",
-                    plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
-                    font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
-                    xaxis=dict(range=[0, 100], title_text="Pourcentage (%)",
-                            showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
-                            showline=True, linecolor="#D6E8F7", zeroline=False,
-                            tickfont=dict(color="#6B88A8", size=11)),
-                    yaxis=dict(showgrid=False, showline=False, zeroline=False,
-                            tickfont=dict(color="#0F2340", size=11)),
-                    height=max(300, len(pct.index) * 55 + 120),
-                    margin=dict(l=20, r=20, t=50, b=40),
-                    title=dict(text=f"{sel_var} selon {sel_outcome}",
-                            font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
-                            x=0.5, xanchor="center"),
-                    legend=dict(bgcolor="rgba(255,255,255,0.95)", bordercolor="#D6E8F7",
-                            borderwidth=1, font=dict(color="#0F2340", size=10),
-                            orientation="h", y=-0.30, x=0.5, xanchor="center")
-                )
+                fig.update_layout(barmode="stack", plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12), xaxis=dict(range=[0, 100], title_text="Pourcentage (%)", showgrid=True, gridcolor="#EDF5FD", gridwidth=1, showline=True, linecolor="#D6E8F7", zeroline=False, tickfont=dict(color="#6B88A8", size=11)), yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)), height=max(300, len(pct.index)*55+120), margin=dict(l=20, r=20, t=50, b=40), title=dict(text=f"{sel_var} selon {sel_outcome}", font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"), x=0.5, xanchor="center"), legend=dict(bgcolor="rgba(255,255,255,0.95)", bordercolor="#D6E8F7", borderwidth=1, font=dict(color="#0F2340", size=10), orientation="h", y=-0.30, x=0.5, xanchor="center"))
                 st.plotly_chart(fig, use_container_width=True, key="bivar_plotly")
 
-            with c_right:
-                # Tableau de distribution
-                st.markdown(
-                    '<p style="font-size:11px;font-weight:700;color:#64748b;'
-                    'letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">'
-                    'Tableau de distribution (%)</p>',
-                    unsafe_allow_html=True
-                )
+            with c_table:
+                st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">Tableau de distribution (%)</p>', unsafe_allow_html=True)
                 st.dataframe(pct.round(1).style.format("{:.1f}%"), use_container_width=True)
 
-                # Interprétation
-                st.markdown(
-                    '<p style="font-size:11px;font-weight:700;color:#64748b;'
-                    'letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">'
-                    '💡 Interprétation</p>',
-                    unsafe_allow_html=True
-                )
-                
-                lignes = list(pct.index)
-                colonnes = list(pct.columns)
-                
+                st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
+                lignes, colonnes = list(pct.index), list(pct.columns)
                 if len(lignes) >= 2 and len(colonnes) >= 1:
                     l1, l2 = lignes[0], lignes[1]
-                    
-                    # Trouver la modalité la plus contrastée
-                    if len(colonnes) >= 2:
-                        # Pourcentage le plus élevé dans la première colonne
-                        c_principale = colonnes[0]
-                        max_pct = pct[c_principale].max()
-                        min_pct = pct[c_principale].min()
-                        ecart = max_pct - min_pct
-                        
-                        if ecart > 20:
-                            intensite = "forte"
-                        elif ecart > 10:
-                            intensite = "modérée"
-                        else:
-                            intensite = "faible"
-                        
-                        st.markdown(f"""
-                        <div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;
-                        padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;
-                        font-family:'Plus Jakarta Sans',sans-serif;">
-                        <p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_outcome}</b> 
-                        selon <b>{sel_var}</b>.</p>
-                        <p style="margin:0 0 8px;">
-                        📌 <b>« {l1} »</b> : {', '.join([f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0])}.
-                        </p>
-                        <p style="margin:0 0 8px;">
-                        📌 <b>« {l2} »</b> : {', '.join([f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0])}.
-                        </p>
-                        <p style="margin:0;">
-                        L'écart de <b>{ecart:.1f} points</b> pour <b>« {c_principale} »</b> 
-                        indique une disparité <b>{intensite}</b> entre ces groupes.
-                        </p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;
-                        padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;
-                        font-family:'Plus Jakarta Sans',sans-serif;">
-                        <p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_outcome}</b> 
-                        selon <b>{sel_var}</b>.</p>
-                        <p style="margin:0 0 8px;">
-                        📌 <b>« {l1} »</b> : {', '.join([f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0])}.
-                        </p>
-                        <p style="margin:0;">
-                        📌 <b>« {l2} »</b> : {', '.join([f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0])}.
-                        </p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    st.markdown(f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:\'Plus Jakarta Sans\',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_outcome}</b> selon <b>{sel_var}</b>.</p><p style="margin:0 0 8px;">Par exemple, parmi les <b>« {l1} »</b> : {", ".join([f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0])}.</p><p style="margin:0;">Tandis que parmi les <b>« {l2} »</b> : {", ".join([f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0])}.</p></div>', unsafe_allow_html=True)
                 else:
-                    st.caption("Données insuffisantes pour générer une interprétation automatique.")
+                    st.caption("Données insuffisantes.")
+
 
 # =============================================================================
 # POINT D'ENTRÉE STREAMLIT
@@ -1024,14 +737,15 @@ def main():
             f'0 4px 12px rgba(30,64,175,0.08);border:1px solid #e8edf5;">'
             f'<div style="width:38px;height:38px;background:linear-gradient(135deg,{accent},{accent2});'
             f'border-radius:10px;display:flex;align-items:center;justify-content:center;">'
-            f'<i class="fas fa-heart" style="color:white;font-size:15px;"></i></div>'
+            f'<i class="fas fa-brain" style="color:white;font-size:15px;"></i></div>'
             f'<div><div style="font-size:16px;font-weight:700;color:#1e293b;'
             f'font-family:\'Plus Jakarta Sans\',sans-serif;">{PAGE_TITLE}</div>'
             f'<div style="font-size:11px;color:#64748b;margin-top:1px;'
-            f'font-family:\'Plus Jakarta Sans\',sans-serif;">Analyse de la satisfaction au travail</div>'
+            f'font-family:\'Plus Jakarta Sans\',sans-serif;">Évaluation du bien-être et du stress perçu</div>'
             f'</div></div>',
             unsafe_allow_html=True
-        )   
+        )
+
     with col_switch:
         st.markdown('<div style="margin-top:4px;">', unsafe_allow_html=True)
         current_mode = render_mode_switcher(key=PAGE_KEY, position="topbar")
@@ -1061,35 +775,37 @@ def main():
         n_before = len(df_raw)
         df_clean, cleaning_log = clean_common_variables(df_raw)
 
-    with st.expander("Journal de nettoyage", expanded=False):
+    with st.expander("📋 Journal de nettoyage", expanded=False):
         st.text(cleaning_log)
-        st.text(f"Questions QVT :{sum(1 for q in QUESTIONS if trouver_colonne_qvt(df_clean, q) is not None)}/20")
-
         st.write(f"Avant: **{n_before}** — Après: **{len(df_clean)}**")
 
     if df_clean.empty:
         st.error("Aucune donnée exploitable.")
         st.stop()
 
-    q_trouvees = sum(1 for q in QUESTIONS if trouver_colonne_qvt(df_clean, q) is not None)
-    if q_trouvees < 20:
-        st.error(f"❌ **Fichier non reconnu** — Seulement {q_trouvees}/20 questions QVT détectées.")
+    # ════════════════════════════════════════════════════════════
+    # VÉRIFICATION PSS-10
+    # ════════════════════════════════════════════════════════════
+    pss_trouvees = sum(1 for k in PSS_ITEMS if trouver_colonne_pss(df_clean, k) is not None)
+    if pss_trouvees < 5:
+        st.error(f"❌ **Fichier non reconnu** — Seulement {pss_trouvees}/10 items PSS-10 détectés.")
         st.stop()
 
-    question_map = resolve_questions(df_clean)
-    df_clean = compute_scores(df_clean, question_map)
+    with st.sidebar:
+        st.markdown(f"**🔍 Items PSS-10 :** {pss_trouvees}/10")
 
-    if "Score_Global" in df_clean.columns:
-        df_clean["niveau_satisfaction"] = df_clean["Score_Global"].apply(lambda s: "Non défini" if pd.isna(s) else "Très satisfait" if s >= 3.5 else "Satisfait" if s >= 2.5 else "Insatisfait" if s >= 1.5 else "Très insatisfait")
-        df_clean["score_global_cat"] = df_clean["Score_Global"].apply(lambda s: "Non défini" if pd.isna(s) else "Élevé" if s >= 3 else "Moyen" if s >= 2 else "Faible")
+    # ════════════════════════════════════════════════════════════
+    # CALCULS PSS-10
+    # ════════════════════════════════════════════════════════════
+    df_clean = compute_pss_scores(df_clean)
 
     # ════════════════════════════════════════════════════════════
     # ONGLETS
     # ════════════════════════════════════════════════════════════
-    if is_rh(current_mode):
-        tabs = st.tabs(["Vue d'ensemble", "Analyse univariée"])
-    else:
+    if is_medecin(current_mode):
         tabs = st.tabs(["Vue d'ensemble", "Analyse univariée", "Analyse bivariée"])
+    else:
+        tabs = st.tabs(["Vue d'ensemble", "Analyse univariée"])
 
     with tabs[0]:
         # ════════════════════════════════════════════════════════════
@@ -1114,33 +830,32 @@ def main():
             ("Pratique sportive", "pratique_sport"),
         ]
         
-        # Séparer variables catégorielles et numériques
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
         
         # Ajouter l'âge numérique s'il existe
         if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
             num_vars.append(("Âge", "age"))
-                
+        
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
             
             with fc1:
                 cat_labels = ["— Aucun —"] + [l for l, _ in cat_vars]
-                sel_cat_label = st.selectbox("Variable (catégorielle)", cat_labels, key="qvt_filtre_cat")
+                sel_cat_label = st.selectbox("Variable (catégorielle)", cat_labels, key="who5_filtre_cat")
             
             with fc2:
                 if sel_cat_label != "— Aucun —":
                     cat_col = dict(cat_vars)[sel_cat_label]
                     modalites = sorted(df_clean[cat_col].dropna().astype(str).unique().tolist())
-                    sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalites, key="qvt_filtre_mod")
+                    sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalites, key="who5_filtre_mod")
                 else:
                     sel_modalite = "Toutes"
                     st.selectbox("Modalité", ["Toutes"], disabled=True)
             
             with fc3:
                 num_labels = ["— Aucun —"] + [l for l, _ in num_vars]
-                sel_num_label = st.selectbox("Variable (numérique)", num_labels, key="qvt_filtre_num")
+                sel_num_label = st.selectbox("Variable (numérique)", num_labels, key="who5_filtre_num")
                 
                 if sel_num_label != "— Aucun —":
                     num_col = dict(num_vars)[sel_num_label]
@@ -1149,7 +864,7 @@ def main():
                         vmin, vmax = int(vals.min()), int(vals.max())
                         if vmin == vmax:
                             vmax = vmin + 1
-                        sel_range = st.slider(f"Plage — {sel_num_label}", vmin, vmax, (vmin, vmax), key="qvt_filtre_range")
+                        sel_range = st.slider(f"Plage — {sel_num_label}", vmin, vmax, (vmin, vmax), key="who5_filtre_range")
                     else:
                         sel_range = None
                         st.slider(f"Plage — {sel_num_label}", 0, 100, (0, 100), disabled=True)
@@ -1158,8 +873,8 @@ def main():
             
             with fc4:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Réinitialiser", key="qvt_reset_filtres", use_container_width=True):
-                    for k in ["qvt_filtre_cat", "qvt_filtre_mod", "qvt_filtre_num", "qvt_filtre_range"]:
+                if st.button("Réinitialiser", key="who5_reset_filtres", use_container_width=True):
+                    for k in ["who5_filtre_cat", "who5_filtre_mod", "who5_filtre_num", "who5_filtre_range"]:
                         if k in st.session_state:
                             del st.session_state[k]
                     st.rerun()
@@ -1185,8 +900,7 @@ def main():
         # ════════════════════════════════════════════════════════════
         # CONTENU DE L'ONGLET 1 (utilise df_filtered)
         # ════════════════════════════════════════════════════════════
-        render_tab_overview(df_filtered, current_mode, n_before, question_map)
-        
+        render_tab_overview(df_filtered, current_mode, n_before)
     with tabs[1]:
         render_tab_analyse(df_clean, current_mode)
 
