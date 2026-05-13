@@ -571,20 +571,20 @@ def _plot_domain_stacked_bar(cat_df: pd.DataFrame, domain_cols: list, title: str
     patches_good = [plt.Rectangle((0,0),1,1, color=LEVEL_COLORS_GOOD[lvl], label=lvl) for lvl in ORDER_LEVELS]
     if mixed:
         leg_risk = ax.legend(handles=patches_risk, ncol=len(ORDER_LEVELS),
-                             bbox_to_anchor=(0.5, -0.14), loc="upper center",
-                             frameon=True, title="(1) Items non inversés", title_fontsize=8, fontsize=8)
+                            bbox_to_anchor=(0.5, -0.14), loc="upper center",
+                            frameon=True, title="(1) Items non inversés", title_fontsize=8, fontsize=8)
         ax.add_artist(leg_risk)
         ax.legend(handles=patches_good, ncol=len(ORDER_LEVELS),
-                  bbox_to_anchor=(0.5, -0.26), loc="upper center",
-                  frameon=True, title="(2) Items inversés", title_fontsize=8, fontsize=8)
+                bbox_to_anchor=(0.5, -0.26), loc="upper center",
+                frameon=True, title="(2) Items inversés", title_fontsize=8, fontsize=8)
         fig.subplots_adjust(bottom=0.28)
     elif has_inverted:
         ax.legend(handles=patches_good, ncol=len(ORDER_LEVELS),
-                  bbox_to_anchor=(0.5, -0.14), loc="upper center", frameon=True, fontsize=8)
+                bbox_to_anchor=(0.5, -0.14), loc="upper center", frameon=True, fontsize=8)
         fig.subplots_adjust(bottom=0.18)
     else:
         ax.legend(handles=patches_risk, ncol=len(ORDER_LEVELS),
-                  bbox_to_anchor=(0.5, -0.14), loc="upper center", frameon=True, fontsize=8)
+                bbox_to_anchor=(0.5, -0.14), loc="upper center", frameon=True, fontsize=8)
         fig.subplots_adjust(bottom=0.18)
     fig.tight_layout()
     return fig
@@ -610,7 +610,7 @@ def _plot_bivariate_stacked(ct: pd.DataFrame, title: str, subdomain_label: str =
     ax.set_xlabel("Pourcentage (%)")
     ax.set_title(title, fontsize=13, fontweight="bold", pad=12)
     ax.legend(handles=legend_patches, ncol=len(ORDER_LEVELS),
-              bbox_to_anchor=(0.5, -0.14), loc="upper center", frameon=True, fontsize=8)
+            bbox_to_anchor=(0.5, -0.14), loc="upper center", frameon=True, fontsize=8)
     fig.subplots_adjust(bottom=0.18)
     fig.tight_layout()
     return fig
@@ -707,7 +707,7 @@ def _interpret_domain_global(domain_table: pd.DataFrame, domain_name: str) -> st
     lines = []
     lines.append(f"<b>Interprétation — {domain_name}</b>")
     lines.append(f"Ce graphique présente la répartition de <b>{len(domain_table)}</b> sous-domaine(s) "
-                 f"pour l'ensemble des répondants.")
+                f"pour l'ensemble des répondants.")
 
     # Sous-domaine le plus à risque (fort + très fort)
     if "Fort" in domain_table.columns and "Tres fort" in domain_table.columns:
@@ -720,13 +720,13 @@ def _interpret_domain_global(domain_table: pd.DataFrame, domain_name: str) -> st
 
         if polarity == "normal":
             lines.append(f"Le sous-domaine le plus exposé est <b>« {worst_name} »</b> avec "
-                         f"<b>{worst_pct:.1f}%</b> des répondants en niveaux Fort ou Très fort (exposition élevée).")
+                        f"<b>{worst_pct:.1f}%</b> des répondants en niveaux Fort ou Très fort (exposition élevée).")
         else:
             # Pour les items inversés, Fort/Très fort = situation favorable
             best = domain_table.sort_values("_risk", ascending=False).iloc[0]
             best_name = best["Sous-domaine"] if "Sous-domaine" in domain_table.columns else "—"
             lines.append(f"Le sous-domaine le plus favorable est <b>« {best_name} »</b> avec "
-                         f"<b>{best['_risk']:.1f}%</b> des répondants à des niveaux élevés (indicateur positif).")
+                        f"<b>{best['_risk']:.1f}%</b> des répondants à des niveaux élevés (indicateur positif).")
 
     # Sous-domaine le plus faible (très faible + faible)
     if "Tres faible" in domain_table.columns and "Faible" in domain_table.columns:
@@ -734,7 +734,7 @@ def _interpret_domain_global(domain_table: pd.DataFrame, domain_name: str) -> st
         best_low = domain_table.sort_values("_low", ascending=False).iloc[0]
         best_low_name = best_low["Sous-domaine"] if "Sous-domaine" in domain_table.columns else "—"
         lines.append(f"À l'inverse, <b>« {best_low_name} »</b> présente le plus fort taux de niveaux Très faible/Faible "
-                     f"(<b>{best_low['_low']:.1f}%</b>).")
+                    f"(<b>{best_low['_low']:.1f}%</b>).")
 
     return "<br>".join(lines)
 
@@ -788,7 +788,7 @@ def _render_interpretation_box(html_text: str) -> None:
 # =============================================================================
 
 def kpi_card(icon_class: str, icon_color: str, icon_bg: str, accent_color: str,
-             value, suffix: str, subtitle: str, label: str) -> str:
+            value, suffix: str, subtitle: str, label: str) -> str:
     return (
         f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;'
         f'padding:20px 16px 16px;text-align:center;box-shadow:0 2px 12px rgba(15,23,42,0.06);'
@@ -829,19 +829,25 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     n = len(df)
     if n_before_cleaning is None: n_before_cleaning = n
 
-    if 'Tranche_dage' in df.columns:
+    # ÂGE
+    if 'age' in df.columns:
+        age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
+        if not age_num.empty:
+            age_display = f"{int(round(age_num.median()))} ans"
+            age_subtitle = "Âge médian"
+        else:
+            age_display, age_subtitle = "—", "non disponible"
+    elif 'Tranche_dage' in df.columns:
         age_str = df['Tranche_dage'].astype(str).str.strip()
         age_clean = age_str[~age_str.str.lower().isin(['non renseigné','nan','','none'])]
         if not age_clean.empty:
             vc = age_clean.value_counts()
             age_display = vc.index[0]
             age_subtitle = f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
-        else: age_display, age_subtitle = "—", "non disponible"
-    elif 'age' in df.columns:
-        age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
-        if not age_num.empty: age_display = f"{int(round(age_num.median()))} ans"; age_subtitle = "médiane"
-        else: age_display, age_subtitle = "—", "non disponible"
-    else: age_display, age_subtitle = "—", "non disponible"
+        else:
+            age_display, age_subtitle = "—", "non disponible"
+    else:
+        age_display, age_subtitle = "—", "non disponible"
 
     if 'Tranche_anciennete' in df.columns:
         anc_str = df['Tranche_anciennete'].astype(str).str.strip()
@@ -1097,6 +1103,9 @@ def main():
         
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
+        # Ajouter l'âge numérique s'il existe
+        if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
+            num_vars.append(("Âge", "age"))
         
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
@@ -1251,16 +1260,16 @@ def main():
                         plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
                         font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
                         xaxis=dict(range=[0, max(pcts_u.values)*1.5], title_text="Pourcentage (%)",
-                                   showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
-                                   showline=True, linecolor="#D6E8F7", zeroline=False,
-                                   tickfont=dict(color="#6B88A8", size=11)),
+                                showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
+                                showline=True, linecolor="#D6E8F7", zeroline=False,
+                                tickfont=dict(color="#6B88A8", size=11)),
                         yaxis=dict(showgrid=False, showline=False, zeroline=False,
-                                   tickfont=dict(color="#0F2340", size=11)),
+                                tickfont=dict(color="#0F2340", size=11)),
                         height=max(300, n_bars*55+120),
                         margin=dict(l=20, r=80, t=60, b=40),
                         title=dict(text=f"Répartition selon : {sel_label}",
-                                   font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
-                                   x=0.5, xanchor="center")
+                                font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
+                                x=0.5, xanchor="center")
                     )
                     st.plotly_chart(fig, use_container_width=True, key="uni_copsoq_plotly")
 
@@ -1272,7 +1281,7 @@ def main():
                     )
                     stats_df = pd.DataFrame(stats_data)
                     st.dataframe(stats_df, use_container_width=True, hide_index=True,
-                                 height=min(400, 35*(len(stats_data)+1)))
+                                height=min(400, 35*(len(stats_data)+1)))
 
                     st.markdown(
                         '<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;'

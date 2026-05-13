@@ -459,18 +459,23 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     if n_before_cleaning is None:
         n_before_cleaning = n
 
-    if 'Tranche_dage' in df.columns:
-        age_str = df['Tranche_dage'].astype(str).str.strip()
-        age_clean = age_str[~age_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
-        if not age_clean.empty:
-            vc = age_clean.value_counts()
-            age_display, age_subtitle = vc.index[0], f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
+    # ÂGE
+    if 'age' in df.columns:
+        age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
+        if not age_num.empty:
+            age_display = f"{int(round(age_num.median()))} ans"
+            age_subtitle = "Âge médian"
         else:
             age_display, age_subtitle = "—", "non disponible"
-    elif 'age' in df.columns:
-        age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
-        age_display = f"{int(round(age_num.median()))} ans" if not age_num.empty else "—"
-        age_subtitle = "médiane" if not age_num.empty else "non disponible"
+    elif 'Tranche_dage' in df.columns:
+        age_str = df['Tranche_dage'].astype(str).str.strip()
+        age_clean = age_str[~age_str.str.lower().isin(['non renseigné','nan','','none'])]
+        if not age_clean.empty:
+            vc = age_clean.value_counts()
+            age_display = vc.index[0]
+            age_subtitle = f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
+        else:
+            age_display, age_subtitle = "—", "non disponible"
     else:
         age_display, age_subtitle = "—", "non disponible"
 
@@ -752,16 +757,16 @@ def render_tab_analyse(df, mode):
                 plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
                 font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
                 xaxis=dict(range=[0, max(pcts_u.values)*1.5], title_text="Pourcentage (%)",
-                           showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
-                           showline=True, linecolor="#D6E8F7", zeroline=False,
-                           tickfont=dict(color="#6B88A8", size=11)),
+                        showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
+                        showline=True, linecolor="#D6E8F7", zeroline=False,
+                        tickfont=dict(color="#6B88A8", size=11)),
                 yaxis=dict(showgrid=False, showline=False, zeroline=False,
-                           tickfont=dict(color="#0F2340", size=11)),
+                        tickfont=dict(color="#0F2340", size=11)),
                 height=max(300, n_bars*55+120),
                 margin=dict(l=20, r=80, t=60, b=40),
                 title=dict(text=f"Répartition selon : {sel_label}",
-                           font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
-                           x=0.5, xanchor="center")
+                        font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
+                        x=0.5, xanchor="center")
             )
             st.plotly_chart(fig, use_container_width=True, key="uni_qvt_plotly")
 
@@ -870,7 +875,7 @@ def render_tab_croisement(df, mode):
                     "Non défini": "#94A3B8",
                 }
                 gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
-                          "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
+                        "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
 
                 fig = go.Figure()
                 for i, cat in enumerate(pct.columns):
@@ -896,19 +901,19 @@ def render_tab_croisement(df, mode):
                     plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
                     font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
                     xaxis=dict(range=[0, 100], title_text="Pourcentage (%)",
-                             showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
-                             showline=True, linecolor="#D6E8F7", zeroline=False,
-                             tickfont=dict(color="#6B88A8", size=11)),
+                            showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
+                            showline=True, linecolor="#D6E8F7", zeroline=False,
+                            tickfont=dict(color="#6B88A8", size=11)),
                     yaxis=dict(showgrid=False, showline=False, zeroline=False,
-                             tickfont=dict(color="#0F2340", size=11)),
+                            tickfont=dict(color="#0F2340", size=11)),
                     height=max(300, len(pct.index) * 55 + 120),
                     margin=dict(l=20, r=20, t=50, b=40),
                     title=dict(text=f"{sel_var} selon {sel_outcome}",
-                             font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
-                             x=0.5, xanchor="center"),
+                            font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
+                            x=0.5, xanchor="center"),
                     legend=dict(bgcolor="rgba(255,255,255,0.95)", bordercolor="#D6E8F7",
-                              borderwidth=1, font=dict(color="#0F2340", size=10),
-                              orientation="h", y=-0.30, x=0.5, xanchor="center")
+                            borderwidth=1, font=dict(color="#0F2340", size=10),
+                            orientation="h", y=-0.30, x=0.5, xanchor="center")
                 )
                 st.plotly_chart(fig, use_container_width=True, key="bivar_plotly")
 
@@ -1109,9 +1114,14 @@ def main():
             ("Pratique sportive", "pratique_sport"),
         ]
         
+        # Séparer variables catégorielles et numériques
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
         
+        # Ajouter l'âge numérique s'il existe
+        if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
+            num_vars.append(("Âge", "age"))
+                
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
             

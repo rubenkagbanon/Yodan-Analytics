@@ -148,30 +148,25 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
     # ══════════════════════════════════════════════════════════════════════════
     # ÂGE : 2 cas possibles
     # ══════════════════════════════════════════════════════════════════════════
-    age_col = _find_age_numeric_col(cleaned_df)
-    if age_col is not None:
-        cleaned_df['age'] = pd.to_numeric(cleaned_df[age_col], errors="coerce")
-        ops.append(f"Colonne 'age' (numérique) créée depuis: {age_col}")
-        age_vals = pd.to_numeric(cleaned_df['age'], errors="coerce")
-        cleaned_df['Tranche_dage'] = pd.cut(
-            age_vals, bins=[0, 30, 40, 50, float("inf")],
-            labels=["20-30 ans", "31-40 ans", "41-50 ans", "51 ans et plus"], right=True
-        )
-        ops.append("Colonne 'Tranche_dage' créée depuis 'age'")
-    else:
-        tranche_age_col = _find_by_patterns(
-            list(cleaned_df.columns), 
-            [r"tranche.*age", r"tranche.*âge", r"classe.*age"]
-        )
-        if tranche_age_col is not None:
-            if tranche_age_col != 'Tranche_dage':
-                cleaned_df['Tranche_dage'] = cleaned_df[tranche_age_col].astype(str)
-                cleaned_df = cleaned_df.drop(columns=[tranche_age_col])
-                ops.append(f"Colonne '{tranche_age_col}' renommée en 'Tranche_dage'")
-            else:
-                ops.append("Colonne 'Tranche_dage' déjà présente")
+    # ÂGE
+    if 'age' in df.columns:
+        age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
+        if not age_num.empty:
+            age_display = f"{int(round(age_num.median()))} ans"
+            age_subtitle = "Âge médian"
         else:
-            ops.append("Âge: aucune colonne trouvée")
+            age_display, age_subtitle = "—", "non disponible"
+    elif 'Tranche_dage' in df.columns:
+        age_str = df['Tranche_dage'].astype(str).str.strip()
+        age_clean = age_str[~age_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
+        if not age_clean.empty:
+            vc = age_clean.value_counts()
+            age_display = vc.index[0]
+            age_subtitle = f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
+        else:
+            age_display, age_subtitle = "—", "non disponible"
+    else:
+        age_display, age_subtitle = "—", "non disponible"
 
     # ANCIENNETÉ
     anciennete_num_col = _find_by_patterns(list(cleaned_df.columns), [r"anciennete", r"anciennet"])
@@ -383,7 +378,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
         age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
         if not age_num.empty:
             age_display = f"{int(round(age_num.median()))} ans"
-            age_subtitle = "médiane"
+            age_subtitle = "En moyenne"
         else:
             age_display, age_subtitle = "—", "non disponible"
     else:
@@ -403,7 +398,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
         anc_num = pd.to_numeric(df['anciennete'], errors='coerce').dropna()
         if not anc_num.empty:
             anc_display = f"{round(anc_num.median())} ans"
-            anc_subtitle = "médiane"
+            anc_subtitle = "Âge médian"
         else:
             anc_display, anc_subtitle = "—", "non disponible"
     else:
@@ -626,6 +621,10 @@ def main():
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
         
+        # Ajouter l'âge numérique s'il existe
+        if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
+            num_vars.append(("Âge", "age"))
+                
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])  # 4 colonnes
             

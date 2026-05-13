@@ -462,7 +462,7 @@ def render_tab_overview(df, paliers_df, questions_par_principe):
     # ── Radar chart ──────────────────────────────────────────
     st.markdown('<div class="section-title">Niveau de maturité SST</div>', unsafe_allow_html=True)
     # ── Liste des 10 principes ─────────────────────────────────
-    with st.expander("📋 Voir la liste des 10 principes évalués"):
+    with st.expander("Voir la liste des 10 principes évalués"):
         st.markdown("""
         <div class="principles-list">
             <ol>

@@ -450,18 +450,25 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     n = len(df)
     if n_before_cleaning is None: n_before_cleaning = n
 
-    if 'Tranche_dage' in df.columns:
-        age_str = df['Tranche_dage'].astype(str).str.strip()
-        age_clean = age_str[~age_str.str.lower().isin(['non renseigné','nan','','none'])]
-        if not age_clean.empty:
-            vc = age_clean.value_counts(); age_display = vc.index[0]
-            age_subtitle = f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
-        else: age_display, age_subtitle = "—","non disponible"
-    elif 'age' in df.columns:
+    # ÂGE
+    if 'age' in df.columns:
         age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
-        if not age_num.empty: age_display = f"{int(round(age_num.median()))} ans"; age_subtitle = "médiane"
-        else: age_display, age_subtitle = "—","non disponible"
-    else: age_display, age_subtitle = "—","non disponible"
+        if not age_num.empty:
+            age_display = f"{int(round(age_num.median()))} ans"
+            age_subtitle = "Âge médian"
+        else:
+            age_display, age_subtitle = "—", "non disponible"
+    elif 'Tranche_dage' in df.columns:
+        age_str = df['Tranche_dage'].astype(str).str.strip()
+        age_clean = age_str[~age_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
+        if not age_clean.empty:
+            vc = age_clean.value_counts()
+            age_display = vc.index[0]
+            age_subtitle = f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
+        else:
+            age_display, age_subtitle = "—", "non disponible"
+    else:
+        age_display, age_subtitle = "—", "non disponible"
 
     if 'Tranche_anciennete' in df.columns:
         anc_str = df['Tranche_anciennete'].astype(str).str.strip()
@@ -627,9 +634,14 @@ def main():
             ("Pratique sportive", "pratique_sport"),
         ]
         
+        # Séparer variables catégorielles et numériques
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
         
+        # Ajouter l'âge numérique s'il existe
+        if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
+            num_vars.append(("Âge", "age"))
+                
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
             
