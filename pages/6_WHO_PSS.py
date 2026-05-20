@@ -357,8 +357,8 @@ def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
 
     Catégories (Cohen 1983) :
         0–13  → Stress faible
-       14–26  → Stress modéré
-       27–40  → Stress élevé
+    14–26  → Stress modéré
+    27–40  → Stress élevé
     """
     out = df.copy()
 
@@ -412,10 +412,10 @@ def detect_who5_columns(df: pd.DataFrame) -> dict:
             col_norm = _pp_normalize_text(col)
             # Recherche par mots-clés
             if ("gai" in expected_norm and "gai" in col_norm) or \
-               ("calme" in expected_norm and "calme" in col_norm) or \
-               ("actif" in expected_norm and "actif" in col_norm) or \
-               ("reveille" in expected_norm and ("reveille" in col_norm or "repose" in col_norm)) or \
-               ("quotidienne" in expected_norm and ("quotidienne" in col_norm or "interessantes" in col_norm)):
+            ("calme" in expected_norm and "calme" in col_norm) or \
+            ("actif" in expected_norm and "actif" in col_norm) or \
+            ("reveille" in expected_norm and ("reveille" in col_norm or "repose" in col_norm)) or \
+            ("quotidienne" in expected_norm and ("quotidienne" in col_norm or "interessantes" in col_norm)):
                 found = col
                 break
             # Fallback: similarité
@@ -558,7 +558,7 @@ def compute_longitudinal_evolution(df: pd.DataFrame, id_col: str = "identifiant"
 # =============================================================================
 
 def kpi_card(icon_class: str, icon_color: str, icon_bg: str, accent_color: str,
-             value, suffix: str, subtitle: str, label: str) -> str:
+            value, suffix: str, subtitle: str, label: str) -> str:
     return (
         f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;'
         f'padding:20px 16px 16px;text-align:center;box-shadow:0 2px 12px rgba(15,23,42,0.06);'
@@ -984,7 +984,7 @@ def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
         c_chart, c_table = st.columns([7, 3])
         with c_chart:
             pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
-                   "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
+                "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
             
             # Palettes spécifiques
             stress_colors = {
@@ -1104,7 +1104,7 @@ def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
                     "Bien-être élevé":   "#22C55E",
                 }
                 gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
-                           "#06B6D4", "#FB923C", "#84CC16"]
+                        "#06B6D4", "#FB923C", "#84CC16"]
 
                 fig = go.Figure()
                 for i, cat in enumerate(pct.columns):
@@ -1187,7 +1187,7 @@ def main():
         """
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800
-              &family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet">
+            &family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet">
         """,
         unsafe_allow_html=True,
     )
