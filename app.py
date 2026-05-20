@@ -366,7 +366,7 @@ with c3:
                 <i class="fas fa-clipboard-list"></i>
             </div>
             <div class="kpi-label">Questionnaires Actifs</div>
-            <div class="kpi-value">7<span> modules</span></div>
+            <div class="kpi-value">6<span> modules</span></div>
             <div class="kpi-sub">analyse multi-dimensionnelle</div>
         </div>
     """, unsafe_allow_html=True)
@@ -442,7 +442,7 @@ with m2:
     menu_button("QVT", "", "#F5A623", "4_QVT.py")
 
 with m3:
-    menu_button("WHO · PSS-10", "", "#7C3AED", "6_WHO.py")
+    menu_button("WHO-5 · PSS-10", "", "#7C3AED", "6_WHO_PSS.py")
     menu_button("SST", "", "#E67E22", "5_SST.py")
 
 # ════════════════════════════════════════════════════════════

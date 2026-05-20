@@ -726,11 +726,11 @@ def main():
             pct_iso = round((nb_iso/n)*100, 1) if n > 0 else 0
             
             indicateurs_rh = [
-                {"nom": "% collaborateurs en Job Strain", "valeur": f"{pct_job_strain:.1f}%", "seuil": "> 25%", "priorite_type": "risque"},
+                {"nom": "Collaborateurs en Job Strain", "valeur": f"{pct_job_strain:.1f}%", "seuil": "> 25%", "priorite_type": "risque"},
                 {"nom": "Score latitude décisionnelle", "valeur": f"{lat_moyen:.1f}" if lat_moyen else "N/A", "seuil": "< 60/120", "priorite_type": "levier"},
                 {"nom": "Score demandes psychologiques", "valeur": f"{dem_moyen:.1f}" if dem_moyen else "N/A", "seuil": "> 22,5/36", "priorite_type": "risque"},
                 {"nom": "Score soutien social", "valeur": f"{ss_moyen:.1f}" if ss_moyen else "N/A", "seuil": "< 20/32", "priorite_type": "vigilance"},
-                {"nom": "% Iso-Strain", "valeur": f"{pct_iso:.1f}%", "seuil": "> 10%", "priorite_type": "risque"},
+                {"nom": "Iso-Strain", "valeur": f"{pct_iso:.1f}%", "seuil": "> 10%", "priorite_type": "risque"},
             ]
             cols = st.columns(5)
             for i, indic in enumerate(indicateurs_rh):
@@ -752,7 +752,7 @@ def main():
                 {"nom": "Soutien social superviseur", "valeur": f"{sup_moyen:.1f}/4" if sup_moyen else "N/A", "seuil": "< 2,3/4", "priorite_type": "vigilance"},
                 {"nom": "Demandes psychologiques", "valeur": f"{dem_moyen:.1f}" if dem_moyen else "N/A", "seuil": "> 22,5/36", "priorite_type": "risque"},
                 {"nom": "Latitude décisionnelle", "valeur": f"{lat_moyen:.1f}" if lat_moyen else "N/A", "seuil": "< 60/120", "priorite_type": "vigilance"},
-                {"nom": "% Tendu (Job Strain)", "valeur": f"{round((df_filtered.get(quad_col)=='Tendu').sum()/n*100,1):.1f}%" if quad_col in df_filtered.columns else "N/A", "seuil": "> 25%", "priorite_type": "risque"},
+                {"nom": "Tendu (Job Strain)", "valeur": f"{round((df_filtered.get(quad_col)=='Tendu').sum()/n*100,1):.1f}%" if quad_col in df_filtered.columns else "N/A", "seuil": "> 25%", "priorite_type": "risque"},
             ]
             cols = st.columns(5)
             for i, indic in enumerate(indicateurs_med):

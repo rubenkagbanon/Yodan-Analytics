@@ -64,20 +64,34 @@ PAGE_KEY = "who5_pss10_view_mode"
 # QUESTIONS PSS-10 (détectées via fuzzy matching)
 # ══════════════════════════════════════════════════════════
 PSS_ITEMS = {
-    "Q1": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_ete_contrarie_par_un_evenement_inattendu",
-    "Q2": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_incable_de_controler_les_choses_importantes_dans_votre_vie",
-    "Q3": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_nerveux_ou_stresse",
-    "Q4": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_le_sentiment_de_bien_maitriser_les_choses",
-    "Q5": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_senti_que_les_difficultes_s_accumulaient_au_point_de_ne_plus_pouvoir_les_surmonter",
-    "Q6": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_confiance_en_votre_capacite_a_resoudre_vos_problemes_personnels",
-    "Q7": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_estime_que_les_choses_allaient_comme_vous_le_vouliez",
-    "Q8": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_le_sentiment_que_vous_ne_pouviez_pas_maitriser_toutes_les_choses_que_vous_aviez_a_faire",
-    "Q9": "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_pu_controler_vos_difficultes",
+    "Q1":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_ete_contrarie_par_un_evenement_inattendu",
+    "Q2":  "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_incable_de_controler_les_choses_importantes_dans_votre_vie",
+    "Q3":  "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_nerveux_ou_stresse",
+    "Q4":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_le_sentiment_de_bien_maitriser_les_choses",
+    "Q5":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_senti_que_les_difficultes_s_accumulaient_au_point_de_ne_plus_pouvoir_les_surmonter",
+    "Q6":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_confiance_en_votre_capacite_a_resoudre_vos_problemes_personnels",
+    "Q7":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_estime_que_les_choses_allaient_comme_vous_le_vouliez",
+    "Q8":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_eu_le_sentiment_que_vous_ne_pouviez_pas_maitriser_toutes_les_choses_que_vous_aviez_a_faire",
+    "Q9":  "au_cours_du_dernier_mois_a_quelle_frequence_avez_vous_pu_controler_vos_difficultes",
     "Q10": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_depasse_par_les_evenements",
 }
 
-# Items inversés (Q4, Q5, Q7, Q8)
-PSS_INVERTED = ["Q4", "Q5", "Q7", "Q8"]
+# ── CORRECTION 1 : items positifs (à inverser) = Q4, Q5, Q6, Q7, Q9
+PSS_INVERTED = ["Q4", "Q5", "Q6", "Q7", "Q9"]
+
+# Items positifs utilisés pour le calcul du sentiment de contrôle
+PSS_ITEMS_POSITIFS = ["Q4", "Q5", "Q6", "Q7", "Q9"]
+
+# ══════════════════════════════════════════════════════════
+# COLONNES WHO-5 (BIEN-ÊTRE)
+# ══════════════════════════════════════════════════════════
+WHO5_COLUMNS = [
+    "je_me_suis_senti_gai_bonne_humeur",
+    "je_me_suis_senti_calme_detendu", 
+    "je_me_suis_senti_actif_vigoureux",
+    "je_me_suis_reveille_frais_repose",
+    "ma_vie_quotidienne_remplie_choses_interessantes"
+]
 
 # ══════════════════════════════════════════════════════════
 # VARIABLES UNIFORMES POUR LES ANALYSES UNIVARIÉES
@@ -103,6 +117,7 @@ VARIABLES_UNIVARIEES = [
 
 VARIABLES_SPECIFIQUES = [
     ("Niveau de stress (PSS-10)", "niveau_stress"),
+    ("Niveau de bien-être (WHO-5)", "niveau_bien_etre"),
 ]
 
 # =============================================================================
@@ -310,18 +325,15 @@ def trouver_colonne_pss(df: pd.DataFrame, item_key: str) -> str | None:
     question_text = PSS_ITEMS.get(item_key)
     if question_text is None:
         return None
-    
-    # Chercher d'abord par nom exact
+
     if question_text in df.columns:
         return question_text
-    
-    # Chercher par pattern Q1..Q10
+
     for col in df.columns:
         col_norm = _pp_normalize_text(col)
         if item_key.lower() in col_norm:
             return col
-    
-    # Fuzzy matching
+
     target = _pp_normalize_text(question_text)
     best_col = None
     best_score = -1.0
@@ -335,43 +347,210 @@ def trouver_colonne_pss(df: pd.DataFrame, item_key: str) -> str | None:
 
 
 def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
-    """Calcule le score PSS-10 avec inversion des items positifs."""
+    """
+    Calcule le score PSS-10 avec inversion correcte des items positifs.
+
+    Items positifs (inversés avant sommation) : Q4, Q5, Q6, Q7, Q9
+    Items négatifs (directs)                  : Q1, Q2, Q3, Q8, Q10
+    Formule inversion : score_item = 4 - valeur_brute
+    Score total ∈ [0 ; 40]
+
+    Catégories (Cohen 1983) :
+        0–13  → Stress faible
+       14–26  → Stress modéré
+       27–40  → Stress élevé
+    """
     out = df.copy()
-    
-    # Résoudre les colonnes
+
     pss_cols = {}
     for key in PSS_ITEMS:
         col = trouver_colonne_pss(out, key)
         if col:
             pss_cols[key] = col
             out[f"pss_{key}"] = pd.to_numeric(out[col], errors="coerce")
-    
+
     if not pss_cols:
         return out
-    
-    # Inverser les items positifs (Q4, Q5, Q7, Q8)
+
+    # ── Inversion des items positifs Q4, Q5, Q6, Q7, Q9
     for inv_key in PSS_INVERTED:
         if inv_key in pss_cols:
             out[f"pss_{inv_key}"] = 4 - out[f"pss_{inv_key}"]
-    
-    # Calculer le score total
+
     score_cols = [f"pss_{k}" for k in pss_cols]
     out["score_stress"] = out[score_cols].sum(axis=1)
-    
-    # Catégoriser le niveau de stress
+
+    # ── Seuils corrects selon Cohen 1983 (0-13 / 14-26 / 27-40)
     def cat_stress(s):
         if pd.isna(s):
             return "Non défini"
         if s >= 27:
-            return "Stress sévère"
-        elif s >= 20:
+            return "Stress élevé"
+        elif s >= 14:
             return "Stress modéré"
         else:
             return "Stress faible"
-    
+
     out["niveau_stress"] = out["score_stress"].apply(cat_stress)
+
+    return out
+
+
+# =============================================================================
+# FONCTIONS WHO-5 (BIEN-ÊTRE)
+# =============================================================================
+
+def detect_who5_columns(df: pd.DataFrame) -> dict:
+    """Détecte les colonnes WHO-5 par correspondance floue."""
+    who5_mapping = {}
+    
+    for expected in WHO5_COLUMNS:
+        found = None
+        expected_norm = _pp_normalize_text(expected)
+        
+        for col in df.columns:
+            col_norm = _pp_normalize_text(col)
+            # Recherche par mots-clés
+            if ("gai" in expected_norm and "gai" in col_norm) or \
+               ("calme" in expected_norm and "calme" in col_norm) or \
+               ("actif" in expected_norm and "actif" in col_norm) or \
+               ("reveille" in expected_norm and ("reveille" in col_norm or "repose" in col_norm)) or \
+               ("quotidienne" in expected_norm and ("quotidienne" in col_norm or "interessantes" in col_norm)):
+                found = col
+                break
+            # Fallback: similarité
+            score = SequenceMatcher(None, expected_norm, col_norm).ratio()
+            if score > 0.6:
+                found = col
+        
+        if found:
+            who5_mapping[expected] = found
+    
+    return who5_mapping
+
+def compute_who5_scores(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcule le score WHO-5 (bien-être psychologique).
+    
+    Chaque item est noté de 0 à 5 (ou de 1 à 6 selon l'échelle).
+    Score total transformé en % : (somme / score_max) * 100
+    Seuils cliniques :
+        < 50%  → Détresse possible
+        50-72% → Bien-être modéré
+        ≥ 72%  → Bien-être élevé
+    """
+    out = df.copy()
+    
+    # Détection des colonnes WHO-5
+    who5_mapping = detect_who5_columns(out)
+    
+    if not who5_mapping:
+        out['who5_score'] = np.nan
+        out['who5_pct'] = np.nan
+        out['niveau_bien_etre'] = "Non disponible"
+        return out
+    
+    # Collecte des scores
+    scores = []
+    for expected, col in who5_mapping.items():
+        # Conversion en numérique
+        vals = pd.to_numeric(out[col], errors='coerce')
+        
+        # Détection de l'échelle (0-5 ou 1-6)
+        if vals.max() <= 5:
+            # Échelle 0-5, conversion en 0-5
+            scores.append(vals)
+        elif vals.max() <= 6:
+            # Échelle 1-6, conversion en 0-5
+            scores.append(vals - 1)
+        else:
+            # Valeurs aberrantes
+            scores.append(vals)
+    
+    if scores:
+        # Somme des items (max = 5 items * 5 = 25)
+        out['who5_sum'] = sum(scores)
+        # Conversion en pourcentage (max 100)
+        out['who5_pct'] = (out['who5_sum'] / 25) * 100
+        
+        # Catégorisation clinique
+        def cat_who5(pct):
+            if pd.isna(pct):
+                return "Non disponible"
+            elif pct < 50:
+                return "Détresse probable"
+            elif pct < 72:
+                return "Bien-être modéré"
+            else:
+                return "Bien-être élevé"
+        
+        out['niveau_bien_etre'] = out['who5_pct'].apply(cat_who5)
+        
+        # Score moyen arrondi pour affichage
+        out['who5_score'] = out['who5_pct'].round(1)
     
     return out
+
+
+# =============================================================================
+# FONCTIONS D'ÉVOLUTION LONGITUDINALE
+# =============================================================================
+
+def compute_longitudinal_evolution(df: pd.DataFrame, id_col: str = "identifiant", wave_col: str = "vague") -> pd.DataFrame:
+    """
+    Calcule l'évolution entre vagues pour les scores WHO-5 et PSS-10.
+    
+    Nécessite :
+        - Une colonne d'identifiant unique par personne
+        - Une colonne indiquant la vague (ex: "T1", "T2")
+        - Les scores calculés (who5_pct, score_stress)
+    
+    Retourne un DataFrame avec les deltas individuels et agrégés.
+    """
+    out = df.copy()
+    
+    # Vérification des colonnes nécessaires
+    if id_col not in out.columns or wave_col not in out.columns:
+        return pd.DataFrame()  # Données longitudinales non disponibles
+    
+    # Vérification des scores
+    has_who5 = 'who5_pct' in out.columns
+    has_stress = 'score_stress' in out.columns
+    
+    if not has_who5 and not has_stress:
+        return pd.DataFrame()
+    
+    # Pivot pour comparer T1 et T2
+    evolution_results = []
+    
+    for pid in out[id_col].unique():
+        person_data = out[out[id_col] == pid].sort_values(wave_col)
+        
+        if len(person_data) < 2:
+            continue
+        
+        # Récupération des valeurs T1 et T2
+        t1 = person_data.iloc[0]
+        t2 = person_data.iloc[1]
+        
+        row = {"identifiant": pid}
+        
+        if has_who5:
+            who5_t1 = t1.get('who5_pct', np.nan)
+            who5_t2 = t2.get('who5_pct', np.nan)
+            if not pd.isna(who5_t1) and not pd.isna(who5_t2):
+                row['delta_who5'] = who5_t2 - who5_t1
+                row['delta_who5_pct'] = (row['delta_who5'] / max(who5_t1, 1)) * 100
+        
+        if has_stress:
+            stress_t1 = t1.get('score_stress', np.nan)
+            stress_t2 = t2.get('score_stress', np.nan)
+            if not pd.isna(stress_t1) and not pd.isna(stress_t2):
+                row['delta_stress'] = stress_t2 - stress_t1
+        
+        evolution_results.append(row)
+    
+    return pd.DataFrame(evolution_results)
 
 
 # =============================================================================
@@ -379,8 +558,25 @@ def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
 # =============================================================================
 
 def kpi_card(icon_class: str, icon_color: str, icon_bg: str, accent_color: str,
-            value, suffix: str, subtitle: str, label: str) -> str:
-    return f"""<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;padding:20px 16px 16px;text-align:center;box-shadow:0 2px 12px rgba(15,23,42,0.06);border-top:3px solid {accent_color};transition:transform 0.2s ease,box-shadow 0.2s ease;min-height:160px;display:flex;flex-direction:column;justify-content:space-between;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px {accent_color}30';" onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 12px rgba(15,23,42,0.06)';"><div><div style="width:40px;height:40px;background:{icon_bg};border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;"><i class="{icon_class}" style="color:{icon_color};font-size:16px;"></i></div><p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin:0 0 6px 0;">{label}</p></div><div><p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:800;color:#0F172A;margin:0;line-height:1;letter-spacing:-0.03em;">{value}<span style="font-size:13px;font-weight:500;color:#94A3B8;">{suffix}</span></p><p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;color:#94A3B8;margin:4px 0 0 0;">{subtitle}</p></div></div>"""
+             value, suffix: str, subtitle: str, label: str) -> str:
+    return (
+        f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;'
+        f'padding:20px 16px 16px;text-align:center;box-shadow:0 2px 12px rgba(15,23,42,0.06);'
+        f'border-top:3px solid {accent_color};transition:transform 0.2s ease,box-shadow 0.2s ease;'
+        f'min-height:160px;display:flex;flex-direction:column;justify-content:space-between;" '
+        f'onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px {accent_color}30\';" '
+        f'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 2px 12px rgba(15,23,42,0.06)\';">'
+        f'<div><div style="width:40px;height:40px;background:{icon_bg};border-radius:10px;'
+        f'display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">'
+        f'<i class="{icon_class}" style="color:{icon_color};font-size:16px;"></i></div>'
+        f'<p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:10px;color:#94A3B8;'
+        f'text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin:0 0 6px 0;">{label}</p></div>'
+        f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:28px;font-weight:800;'
+        f'color:#0F172A;margin:0;line-height:1;letter-spacing:-0.03em;">{value}'
+        f'<span style="font-size:13px;font-weight:500;color:#94A3B8;">{suffix}</span></p>'
+        f'<p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:11px;color:#94A3B8;'
+        f'margin:4px 0 0 0;">{subtitle}</p></div></div>'
+    )
 
 
 def _compute_cardio_risk(df: pd.DataFrame) -> tuple:
@@ -395,9 +591,9 @@ def _compute_cardio_risk(df: pd.DataFrame) -> tuple:
             s = df[col].astype(str).str.lower().str.strip()
             score += float((s.isin(['oui', 'yes', '1', 'vrai', 'true'])).sum() / n) * w
     score = round(score, 2)
-    if score <= 1.5: return score, "Faible", "#16A37F"
-    elif score <= 3.0: return score, "Modéré", "#F5A623"
-    else: return score, "Élevé", "#E8504A"
+    if score <= 1.5:   return score, "Faible",  "#16A37F"
+    elif score <= 3.0: return score, "Modéré",  "#F5A623"
+    else:              return score, "Élevé",   "#E8504A"
 
 
 def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
@@ -409,16 +605,16 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     if 'age' in df.columns:
         age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
         if not age_num.empty:
-            age_display = f"{int(round(age_num.median()))} ans"
+            age_display  = f"{int(round(age_num.median()))} ans"
             age_subtitle = "Âge médian"
         else:
             age_display, age_subtitle = "—", "non disponible"
     elif 'Tranche_dage' in df.columns:
-        age_str = df['Tranche_dage'].astype(str).str.strip()
-        age_clean = age_str[~age_str.str.lower().isin(['non renseigné','nan','','none'])]
+        age_str   = df['Tranche_dage'].astype(str).str.strip()
+        age_clean = age_str[~age_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
         if not age_clean.empty:
             vc = age_clean.value_counts()
-            age_display = vc.index[0]
+            age_display  = vc.index[0]
             age_subtitle = f"Classe dominante ({(vc.iloc[0]/len(age_clean))*100:.0f}%)"
         else:
             age_display, age_subtitle = "—", "non disponible"
@@ -426,7 +622,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
         age_display, age_subtitle = "—", "non disponible"
 
     if 'Tranche_anciennete' in df.columns:
-        anc_str = df['Tranche_anciennete'].astype(str).str.strip()
+        anc_str   = df['Tranche_anciennete'].astype(str).str.strip()
         anc_clean = anc_str[~anc_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
         if not anc_clean.empty:
             vc = anc_clean.value_counts()
@@ -435,7 +631,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
             anc_display, anc_subtitle = "—", "non disponible"
     elif 'anciennete' in df.columns:
         anc_num = pd.to_numeric(df['anciennete'], errors='coerce').dropna()
-        anc_display = f"{round(anc_num.median())} ans" if not anc_num.empty else "—"
+        anc_display  = f"{round(anc_num.median())} ans" if not anc_num.empty else "—"
         anc_subtitle = "médiane" if not anc_num.empty else "non disponible"
     else:
         anc_display, anc_subtitle = "—", "non disponible"
@@ -452,9 +648,11 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
                 genre_display, genre_subtitle = f"{(nb_f/n)*100:.0f}%", f"Femmes ({nb_f})"
                 genre_icon, genre_color, genre_bg = "fas fa-female", "#EC4899", "#FCE7F3"
         else:
-            genre_display, genre_subtitle, genre_icon, genre_color, genre_bg = "—", "non disponible", "fas fa-venus-mars", "#94A3B8", "#F1F5F9"
+            genre_display, genre_subtitle = "—", "non disponible"
+            genre_icon, genre_color, genre_bg = "fas fa-venus-mars", "#94A3B8", "#F1F5F9"
     else:
-        genre_display, genre_subtitle, genre_icon, genre_color, genre_bg = "—", "non disponible", "fas fa-venus-mars", "#94A3B8", "#F1F5F9"
+        genre_display, genre_subtitle = "—", "non disponible"
+        genre_icon, genre_color, genre_bg = "fas fa-venus-mars", "#94A3B8", "#F1F5F9"
 
     cardio_score, cardio_label, cardio_color = _compute_cardio_risk(df)
 
@@ -472,28 +670,72 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
 
 
 # =============================================================================
-# FONCTIONS INDICATEURS
+# FONCTIONS INDICATEURS (CORRIGÉE)
 # =============================================================================
 
 def get_priority_info(priorite_type: str) -> tuple:
-    if priorite_type == "risque": return "#EF4444", "Risque prioritaire", "#EF4444"
-    elif priorite_type == "levier": return "#22C55E", "Levier performance", "#22C55E"
-    elif priorite_type == "vigilance": return "#F59E0B", "Vigilance", "#F59E0B"
-    elif priorite_type == "strategique": return "#3B82F6", "Stratégique", "#3B82F6"
-    elif priorite_type == "protecteur": return "#22C55E", "Levier protecteur", "#22C55E"
+    if priorite_type == "risque":      return "#EF4444", "Risque prioritaire", "#EF4444"
+    elif priorite_type == "levier":    return "#22C55E", "Levier performance", "#22C55E"
+    elif priorite_type == "vigilance": return "#F59E0B", "Vigilance",          "#F59E0B"
+    elif priorite_type == "strategique": return "#3B82F6", "Stratégique",      "#3B82F6"
+    elif priorite_type == "protecteur":  return "#22C55E", "Levier protecteur","#22C55E"
     return "#6B7280", "", "#6B7280"
 
 
 def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type: str) -> str:
+    """
+    Affiche une carte d'indicateur.
+    Si valeur est None ou "N/A", affiche "NA" au lieu de "Données insuffisantes".
+    """
+    # Vérifier si la valeur est manquante ou NA
+    is_na = False
     if valeur is None:
-        return '<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:12px;padding:16px;text-align:center;min-height:170px;display:flex;align-items:center;justify-content:center;"><p style="color:#94A3B8;font-size:0.85rem;">Données<br>insuffisantes</p></div>'
+        is_na = True
+    elif isinstance(valeur, str) and valeur.upper() in ["N/A", "NA", "N.D", "N/D", ""]:
+        is_na = True
+    elif isinstance(valeur, float) and np.isnan(valeur):
+        is_na = True
+    
+    # Si données insuffisantes, afficher "NA" avec le nom du KPI
+    if is_na:
+        bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+        priorite_bg = bordure_color + "18"
+        
+        return (
+            f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;'
+            f'padding:20px 14px 16px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,0.06);'
+            f'border-top:4px solid {bordure_color};min-height:190px;display:flex;flex-direction:column;'
+            f'justify-content:space-between;">'
+            f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:14px;font-weight:700;'
+            f'color:#1E293B;margin:0;line-height:1.3;">{nom}</p></div>'
+            f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:36px;'
+            f'font-weight:800;color:#94A3B8;margin:8px 0;line-height:1;">NA</p>'
+            f'<span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;'
+            f'font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span>'
+            f'<p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">Données non disponibles</p></div></div>'
+        )
+    
+    # Données valides - affichage normal
     bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
     valeur_color = bordure_color
-    priorite_bg = bordure_color + "18"
-    seuil_str = f"Seuil {operateur} {seuil}" if seuil is not None else ""
-    valeur_str = str(valeur)
+    priorite_bg  = bordure_color + "18"
+    seuil_str    = f"Seuil {operateur} {seuil}" if seuil is not None else ""
+    valeur_str   = str(valeur)
     taille_police = "36px" if len(valeur_str) <= 10 else "22px"
-    return f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;padding:20px 14px 16px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,0.06);border-top:4px solid {bordure_color};min-height:190px;display:flex;flex-direction:column;justify-content:space-between;"><div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:14px;font-weight:700;color:#1E293B;margin:0;line-height:1.3;">{nom}</p></div><div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:{taille_police};font-weight:800;color:{valeur_color};margin:8px 0;line-height:1;">{valeur}</p><span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span><p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">{seuil_str}</p></div></div>'
+    
+    return (
+        f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;'
+        f'padding:20px 14px 16px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,0.06);'
+        f'border-top:4px solid {bordure_color};min-height:190px;display:flex;flex-direction:column;'
+        f'justify-content:space-between;">'
+        f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:14px;font-weight:700;'
+        f'color:#1E293B;margin:0;line-height:1.3;">{nom}</p></div>'
+        f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:{taille_police};'
+        f'font-weight:800;color:{valeur_color};margin:8px 0;line-height:1;">{valeur}</p>'
+        f'<span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;'
+        f'font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span>'
+        f'<p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">{seuil_str}</p></div></div>'
+    )
 
 
 # =============================================================================
@@ -515,83 +757,201 @@ def load_data_from_bytes(file_bytes: bytes, file_name: str) -> pd.DataFrame:
 # FONCTIONS DE RENDU PAR ONGLET
 # =============================================================================
 
-def render_tab_overview(df, mode, n_before):
-    """Onglet Vue d'ensemble - KPIs et indicateurs WHO-5 · PSS-10."""
+def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
+    """Onglet Vue d'ensemble — KPIs population + indicateurs WHO-5 · PSS-10."""
+
     st.markdown('<div class="section-title">Données Générales de la Population</div>', unsafe_allow_html=True)
     render_kpi_row(df, n_before_cleaning=n_before)
 
     n = len(df)
+
+    # ── Calculs PSS-10 ──────────────────────────────────────────────────────
+    score_moyen  = df["score_stress"].mean() if "score_stress" in df.columns else None
+    pct_eleve    = (df["niveau_stress"] == "Stress élevé").sum() / n * 100 if "niveau_stress" in df.columns else None
+
+    # ── Sentiment de contrôle sur items positifs Q4,Q5,Q6,Q7,Q9
+    controle_cols = [f"pss_{k}" for k in PSS_ITEMS_POSITIFS if f"pss_{k}" in df.columns]
+    if controle_cols:
+        controle_moyen = df[controle_cols].mean().mean()
+        controle_pct   = controle_moyen / 4 * 100
+    else:
+        controle_pct = None
+
+    # ── Calculs WHO-5 (bien-être) ───────────────────────────────────────────
+    who5_moyen = df["who5_pct"].mean() if "who5_pct" in df.columns else None
+    who5_display = f"{who5_moyen:.1f}%" if who5_moyen is not None else "N/A"
     
-    # Calculs PSS-10
-    score_moyen = df["score_stress"].mean() if "score_stress" in df.columns else None
-    pct_severe = (df["niveau_stress"] == "Stress sévère").sum() / n * 100 if "niveau_stress" in df.columns else None
-    
-    # Sentiment de contrôle (moyenne des items inversés normalisée)
-    controle_cols = [c for c in df.columns if c.startswith("pss_Q") and c[-1] in ["4", "5", "7", "8"]]
-    controle_moyen = df[controle_cols].mean().mean() if controle_cols else None
-    controle_pct = (1 - controle_moyen / 4) * 100 if controle_moyen is not None else None
+    # ── Évolution longitudinale ─────────────────────────────────────────────
+    evo_df = compute_longitudinal_evolution(df)
+    delta_display = "N/A"
+    alerte = ""
+    if not evo_df.empty and 'delta_who5' in evo_df.columns:
+        delta_moyen = evo_df['delta_who5'].mean()
+        delta_display = f"{delta_moyen:+.1f} pts"
+        alerte = "🔴" if delta_moyen > 5 else ("🟢" if delta_moyen < -5 else "🟡")
 
     # ══════════════════════════════════════════════════════════
-    # INDICATEURS RH/DG
+    # INDICATEURS RH / DG
     # ══════════════════════════════════════════════════════════
     if is_rh(mode):
         st.markdown('<div class="section-title">Indicateurs RH/DG</div>', unsafe_allow_html=True)
-
+        
         indicateurs_rh = [
-            {"nom": "Score stress perçu moyen (PSS-10)", "valeur": f"{score_moyen:.1f}/40" if score_moyen is not None else "N/A", "seuil": "> 20/40", "priorite_type": "risque"},
-            {"nom": "% stress sévère (PSS ≥ 27)", "valeur": f"{pct_severe:.1f}%" if pct_severe is not None else "N/A", "seuil": "> 10% OMS", "priorite_type": "risque"},
-            {"nom": "Sentiment de contrôle perçu", "valeur": f"{controle_pct:.1f}%" if controle_pct is not None else "N/A", "seuil": "< 50%", "priorite_type": "vigilance"},
-            {"nom": "WHO-5 bien-être moyen", "valeur": "N/A", "seuil": "< 50/100", "priorite_type": "vigilance"},
-            {"nom": "Évolution entre vagues (Δ T1→T2)", "valeur": "N/A", "seuil": "Δ > 5 = signal", "priorite_type": "strategique"},
+            {
+                "nom": "Score stress perçu moyen (PSS-10)",
+                "valeur": f"{score_moyen:.1f}" if score_moyen is not None else "N/A",
+                "seuil": "> 20/40",
+                "operateur": ">",
+                "priorite_type": "risque",
+            },
+            {
+                "nom": "Stress élevé (PSS ≥ 27)",
+                "valeur": f"{pct_eleve:.1f}%" if pct_eleve is not None else "N/A",
+                "seuil": "> 10% OMS",
+                "operateur": ">",
+                "priorite_type": "risque",
+            },
+            {
+                "nom": "Sentiment de contrôle perçu",
+                "valeur": f"{controle_pct:.1f}%" if controle_pct is not None else "N/A",
+                "seuil": "< 50%",
+                "operateur": "<",
+                "priorite_type": "vigilance",
+            },
+            {
+                "nom": "WHO-5 bien-être moyen",
+                "valeur": who5_display,
+                "seuil": "< 50/100",
+                "operateur": "<",
+                "priorite_type": "vigilance",
+            },
+            {
+                "nom": f"Évolution entre vagues {alerte}",
+                "valeur": delta_display,
+                "seuil": "Δ > 5 = signal",
+                "operateur": "",
+                "priorite_type": "strategique",
+            },
         ]
+
         cols = st.columns(5)
         for i, indic in enumerate(indicateurs_rh):
             with cols[i]:
-                st.markdown(render_indicator_card(indic["nom"], indic["valeur"], indic["seuil"], "", indic["priorite_type"]), unsafe_allow_html=True)
+                st.markdown(
+                    render_indicator_card(
+                        indic["nom"], indic["valeur"],
+                        indic["seuil"], indic["operateur"],
+                        indic["priorite_type"],
+                    ),
+                    unsafe_allow_html=True,
+                )
 
     # ══════════════════════════════════════════════════════════
-    # INDICATEURS MÉDECIN
+    # INDICATEURS MÉDECIN DU TRAVAIL
     # ══════════════════════════════════════════════════════════
     if is_medecin(mode):
         st.markdown('<div class="section-title">Indicateurs Médecin du Travail</div>', unsafe_allow_html=True)
 
-        # WHO-5 < 28 prévalence détresse
-        who5_detresse = "N/A"  # À calculer si colonnes WHO-5 disponibles
-        
-        # PSS ≥ 27 stress sévère clinique
-        pss_severe_clinique = f"{pct_severe:.1f}%" if pct_severe is not None else "N/A"
-        
-        # Item Q5 PSS (accumulation difficultés) ≥ 3
+        # WHO-5 prévalence détresse
+        if "who5_pct" in df.columns:
+            pct_detresse = (df["who5_pct"] < 50).sum() / max(len(df), 1) * 100
+            who5_detresse = f"{pct_detresse:.1f}%"
+        else:
+            who5_detresse = "N/A"
+
+        # PSS ≥ 27 stress élevé clinique
+        pss_eleve_clinique = f"{pct_eleve:.1f}%" if pct_eleve is not None else "N/A"
+
+        # Q5 : "incapacité a surmonter"
         q5_col = trouver_colonne_pss(df, "Q5")
-        if q5_col:
+        if q5_col is not None:
             q5_vals = pd.to_numeric(df[q5_col], errors="coerce")
             pct_q5_eleve = (q5_vals >= 3).sum() / max(q5_vals.notna().sum(), 1) * 100
             q5_display = f"{pct_q5_eleve:.1f}%"
         else:
             q5_display = "N/A"
-        
-        # Stress × comportements à risque
+
+        # Stress × comportements à risque (tabagisme) - CORRIGÉ
+        stress_tabac_display = "N/A"
         if "score_stress" in df.columns and "tabagisme" in df.columns:
-            tabac_oui = df["tabagisme"].astype(str).str.lower().isin(['oui', 'yes', '1', 'vrai', 'true'])
-            stress_tabac = ((df["score_stress"] >= 20) & tabac_oui).sum() / max(n, 1) * 100
-            stress_tabac_display = f"{stress_tabac:.1f}%"
-        else:
-            stress_tabac_display = "N/A"
+            # Nettoyage robuste de la colonne tabagisme
+            tabac_clean = df["tabagisme"].astype(str).str.lower().str.strip()
+            
+            # Détection des réponses positives
+            tabac_oui = tabac_clean.isin(['oui', 'yes', '1', 'vrai', 'true', 'x', '✔', '✓'])
+            
+            # Si aucun "oui" détecté, essayer avec "non" pour inférer
+            if tabac_oui.sum() == 0:
+                tabac_non = tabac_clean.isin(['non', 'no', '0', 'faux', 'false', ''])
+                if tabac_non.sum() > 0:
+                    tabac_oui = ~tabac_non & ~tabac_clean.isna()
+            
+            n_valides = tabac_oui.notna().sum()
+            if n_valides > 0:
+                # Stress élevé = score >= 20
+                stress_eleve = df["score_stress"] >= 20
+                stress_tabac = ((stress_eleve) & (tabac_oui)).sum()
+                stress_tabac_pct = (stress_tabac / max(n_valides, 1)) * 100
+                stress_tabac_display = f"{stress_tabac_pct:.1f}%"
+
+        # Évolution longitudinale PSS
+        delta_stress_display = "N/A"
+        if not evo_df.empty and 'delta_stress' in evo_df.columns:
+            delta_stress_moyen = evo_df['delta_stress'].mean()
+            delta_stress_display = f"{delta_stress_moyen:+.1f} pts"
 
         indicateurs_med = [
-            {"nom": "WHO-5 < 28 — prévalence détresse", "valeur": who5_detresse, "seuil": "Tout cas < 28", "priorite_type": "risque"},
-            {"nom": "PSS ≥ 27 — stress sévère clinique", "valeur": pss_severe_clinique, "seuil": "Tout cas ≥ 27", "priorite_type": "risque"},
-            {"nom": "Item Q5 PSS (accumulation difficultés)", "valeur": q5_display, "seuil": "> 30%", "priorite_type": "risque"},
-            {"nom": "Stress × comportements à risque", "valeur": stress_tabac_display, "seuil": "> 15%", "priorite_type": "vigilance"},
-            {"nom": "Suivi longitudinal PSS (Δ T1→T2)", "valeur": "N/A", "seuil": "Δ > 3 = signal", "priorite_type": "vigilance"},
+            {
+                "nom": "WHO-5  — prévalence détresse",
+                "valeur": who5_detresse,
+                "seuil": "> 15% (alerte OMS)",
+                "operateur": ">",
+                "priorite_type": "risque",
+            },
+            {
+                "nom": "PSS ≥ 27 — stress élevé clinique",
+                "valeur": pss_eleve_clinique,
+                "seuil": "Tout cas ≥ 27",
+                "operateur": "≥",
+                "priorite_type": "risque",
+            },
+            {
+                "nom": "Item Q5 PSS (incapcié à surmonter)",
+                "valeur": q5_display,
+                "seuil": "> 30%",
+                "operateur": ">",
+                "priorite_type": "risque",
+            },
+            {
+                "nom": "Profil stress × comportements à risque",
+                "valeur": stress_tabac_display,
+                "seuil": "> 15%",
+                "operateur": ">",
+                "priorite_type": "vigilance",
+            },
+            {
+                "nom": "Suivi longitudinal PSS",
+                "valeur": delta_stress_display,
+                "seuil": "Δ > 3 = signal",
+                "operateur": "",
+                "priorite_type": "vigilance",
+            },
         ]
+
         cols = st.columns(5)
         for i, indic in enumerate(indicateurs_med):
             with cols[i]:
-                st.markdown(render_indicator_card(indic["nom"], indic["valeur"], indic["seuil"], "", indic["priorite_type"]), unsafe_allow_html=True)
+                st.markdown(
+                    render_indicator_card(
+                        indic["nom"], indic["valeur"],
+                        indic["seuil"], indic["operateur"],
+                        indic["priorite_type"],
+                    ),
+                    unsafe_allow_html=True,
+                )
 
 
-def render_tab_analyse(df, mode):
+def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
     """Onglet Analyse univariée."""
     st.markdown('<div class="section-title">Analyse univariée</div>', unsafe_allow_html=True)
 
@@ -611,52 +971,107 @@ def render_tab_analyse(df, mode):
 
     if sel_col and sel_col in df.columns:
         counts_u = df[sel_col].value_counts()
-        total_u = counts_u.sum()
-        pcts_u = (counts_u / total_u * 100).round(1)
-        n_bars = len(counts_u)
+        total_u  = counts_u.sum()
+        pcts_u   = (counts_u / total_u * 100).round(1)
+        n_bars   = len(counts_u)
 
-        stats_data = [{"Modalité": str(cat), "Effectif": int(eff), "Fréquence": f"{pct:.1f}%"} for cat, eff, pct in zip(counts_u.index, counts_u.values, pcts_u.values)]
+        stats_data = [
+            {"Modalité": str(cat), "Effectif": int(eff), "Fréquence": f"{pct:.1f}%"}
+            for cat, eff, pct in zip(counts_u.index, counts_u.values, pcts_u.values)
+        ]
         stats_data.append({"Modalité": "TOTAL", "Effectif": int(total_u), "Fréquence": "100%"})
 
         c_chart, c_table = st.columns([7, 3])
         with c_chart:
-            pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA", "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
-            stress_colors = {"Stress faible": "#22C55E", "Stress modéré": "#F59E0B", "Stress sévère": "#EF4444"}
+            pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
+                   "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
+            
+            # Palettes spécifiques
+            stress_colors = {
+                "Stress faible":  "#22C55E",
+                "Stress modéré":  "#F59E0B",
+                "Stress élevé":   "#EF4444",
+            }
+            who5_colors = {
+                "Détresse probable": "#EF4444",
+                "Bien-être modéré":  "#F59E0B",
+                "Bien-être élevé":   "#22C55E",
+            }
 
             fig = go.Figure()
             for i, (cat, pct, eff) in enumerate(zip(counts_u.index, pcts_u.values, counts_u.values)):
-                bar_color = stress_colors.get(str(cat), pal[i % len(pal)]) if sel_col == "niveau_stress" else pal[i % len(pal)]
-                fig.add_trace(go.Bar(y=[str(cat)], x=[pct], orientation='h', marker_color=bar_color, marker=dict(opacity=0.9, line=dict(width=0)), text=f"{pct:.1f}%  ({int(eff)})", textposition="outside", textfont=dict(color="#6B88A8", size=12, family="Plus Jakarta Sans"), showlegend=False))
+                if sel_col == "niveau_stress":
+                    bar_color = stress_colors.get(str(cat), pal[i % len(pal)])
+                elif sel_col == "niveau_bien_etre":
+                    bar_color = who5_colors.get(str(cat), pal[i % len(pal)])
+                else:
+                    bar_color = pal[i % len(pal)]
+                    
+                fig.add_trace(go.Bar(
+                    y=[str(cat)], x=[pct], orientation='h',
+                    marker_color=bar_color,
+                    marker=dict(opacity=0.9, line=dict(width=0)),
+                    text=f"{pct:.1f}%  ({int(eff)})",
+                    textposition="outside",
+                    textfont=dict(color="#6B88A8", size=12, family="Plus Jakarta Sans"),
+                    showlegend=False,
+                ))
 
-            fig.update_layout(plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12), xaxis=dict(range=[0, max(pcts_u.values)*1.5], title_text="Pourcentage (%)", showgrid=True, gridcolor="#EDF5FD", gridwidth=1, showline=True, linecolor="#D6E8F7", zeroline=False, tickfont=dict(color="#6B88A8", size=11)), yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)), height=max(300, n_bars*55+120), margin=dict(l=20, r=80, t=60, b=40), title=dict(text=f"Répartition selon : {sel_label}", font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"), x=0.5, xanchor="center"))
+            fig.update_layout(
+                plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
+                xaxis=dict(
+                    range=[0, max(pcts_u.values) * 1.5],
+                    title_text="Pourcentage (%)",
+                    showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
+                    showline=True, linecolor="#D6E8F7", zeroline=False,
+                    tickfont=dict(color="#6B88A8", size=11),
+                ),
+                yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)),
+                height=max(300, n_bars * 55 + 120),
+                margin=dict(l=20, r=80, t=60, b=40),
+                title=dict(
+                    text=f"Répartition selon : {sel_label}",
+                    font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
+                    x=0.5, xanchor="center",
+                ),
+            )
             st.plotly_chart(fig, use_container_width=True, key="uni_who5_plotly")
 
         with c_table:
             st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">Statistiques</p>', unsafe_allow_html=True)
-            st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True, height=min(400, 35*(len(stats_data)+1)))
+            st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True, height=min(400, 35 * (len(stats_data) + 1)))
 
             st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
             modalites = list(counts_u.index)
             if len(modalites) >= 2:
                 m1, m2 = modalites[0], modalites[1]
-                st.markdown(f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:\'Plus Jakarta Sans\',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_label}</b> parmi les {int(total_u)} répondants.</p><p style="margin:0 0 8px;">La modalité dominante est <b>« {m1} »</b> avec <b>{pcts_u.iloc[0]:.1f}%</b> des répondants ({int(counts_u.iloc[0])} personne(s)).</p><p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{pcts_u.iloc[1]:.1f}%</b> ({int(counts_u.iloc[1])} personne(s)). Au total, <b>{n_bars}</b> modalités.</p></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;'
+                    f'padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;'
+                    f'font-family:\'Plus Jakarta Sans\',sans-serif;">'
+                    f'<p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_label}</b> parmi les {int(total_u)} répondants.</p>'
+                    f'<p style="margin:0 0 8px;">La modalité dominante est <b>« {m1} »</b> avec <b>{pcts_u.iloc[0]:.1f}%</b> des répondants ({int(counts_u.iloc[0])} personne(s)).</p>'
+                    f'<p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{pcts_u.iloc[1]:.1f}%</b> ({int(counts_u.iloc[1])} personne(s)). Au total, <b>{n_bars}</b> modalités.</p>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
             else:
                 st.caption("Données insuffisantes.")
 
 
-def render_tab_croisement(df, mode):
+def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
     """Onglet Analyse bivariée."""
     st.markdown('<div class="section-title">Analyse bivariée</div>', unsafe_allow_html=True)
 
     VAR_CROISE = {label: col for label, col in VARIABLES_UNIVARIEES if col in df.columns}
-    
+
     OUTCOME_MAP = {}
     if "niveau_stress" in df.columns:
-        OUTCOME_MAP["Niveau de stress"] = "niveau_stress"
-    if "score_stress" in df.columns:
-        df["score_stress_cat"] = pd.cut(df["score_stress"], bins=[-1, 13, 26, 40], labels=["Faible (0-13)", "Modéré (14-26)", "Sévère (27-40)"])
-        OUTCOME_MAP["Score PSS-10 (catégoriel)"] = "score_stress_cat"
-    
+        OUTCOME_MAP["Niveau de stress (PSS-10 )"] = "niveau_stress"
+    if "niveau_bien_etre" in df.columns:
+        OUTCOME_MAP["Niveau de bien-être (WHO-5)"] = "niveau_bien_etre"
+
     OUTCOME_OPTIONS = {k: v for k, v in OUTCOME_MAP.items() if v in df.columns}
 
     if not VAR_CROISE or not OUTCOME_OPTIONS:
@@ -669,27 +1084,68 @@ def render_tab_croisement(df, mode):
     with cx2:
         sel_outcome = st.selectbox("Variable de résultat", list(OUTCOME_OPTIONS.keys()), key="bivar_outcome")
 
-    var_col, out_col = VAR_CROISE.get(sel_var), OUTCOME_OPTIONS.get(sel_outcome)
+    var_col = VAR_CROISE.get(sel_var)
+    out_col = OUTCOME_OPTIONS.get(sel_outcome)
+
     if var_col and out_col and var_col in df.columns and out_col in df.columns:
         tmp = df[[var_col, out_col]].dropna()
         if not tmp.empty:
-            ct = pd.crosstab(tmp[var_col].astype(str), tmp[out_col].astype(str))
+            ct  = pd.crosstab(tmp[var_col].astype(str), tmp[out_col].astype(str))
             pct = ct.div(ct.sum(axis=1), axis=0) * 100
 
             c_chart, c_table = st.columns([7, 3])
             with c_chart:
-                colors_map = {"Stress faible": "#22C55E", "Stress modéré": "#F59E0B", "Stress sévère": "#EF4444",
-                             "Faible (0-13)": "#22C55E", "Modéré (14-26)": "#F59E0B", "Sévère (27-40)": "#EF4444"}
-                gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA", "#06B6D4", "#FB923C", "#84CC16"]
+                colors_map = {
+                    "Stress faible":  "#22C55E",
+                    "Stress modéré":  "#F59E0B",
+                    "Stress élevé":   "#EF4444",
+                    "Détresse probable": "#EF4444",
+                    "Bien-être modéré":  "#F59E0B",
+                    "Bien-être élevé":   "#22C55E",
+                }
+                gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
+                           "#06B6D4", "#FB923C", "#84CC16"]
 
                 fig = go.Figure()
                 for i, cat in enumerate(pct.columns):
-                    vals, ns = pct[cat].values, ct[cat].values
+                    vals = pct[cat].values
+                    ns   = ct[cat].values
                     txts = [f"{v:.1f}%  ({n})" if v >= 5 else "" for v, n in zip(vals, ns)]
                     color = colors_map.get(str(cat), gen_pal[i % len(gen_pal)])
-                    fig.add_trace(go.Bar(name=str(cat), y=list(pct.index), x=vals, orientation='h', marker_color=color, marker=dict(opacity=0.9, line=dict(width=0)), text=txts, textposition="inside", insidetextanchor="middle", textfont=dict(color="white", size=11, family="Plus Jakarta Sans")))
+                    fig.add_trace(go.Bar(
+                        name=str(cat),
+                        y=list(pct.index), x=vals, orientation='h',
+                        marker_color=color,
+                        marker=dict(opacity=0.9, line=dict(width=0)),
+                        text=txts,
+                        textposition="inside", insidetextanchor="middle",
+                        textfont=dict(color="white", size=11, family="Plus Jakarta Sans"),
+                    ))
 
-                fig.update_layout(barmode="stack", plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12), xaxis=dict(range=[0, 100], title_text="Pourcentage (%)", showgrid=True, gridcolor="#EDF5FD", gridwidth=1, showline=True, linecolor="#D6E8F7", zeroline=False, tickfont=dict(color="#6B88A8", size=11)), yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)), height=max(300, len(pct.index)*55+120), margin=dict(l=20, r=20, t=50, b=40), title=dict(text=f"{sel_var} selon {sel_outcome}", font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"), x=0.5, xanchor="center"), legend=dict(bgcolor="rgba(255,255,255,0.95)", bordercolor="#D6E8F7", borderwidth=1, font=dict(color="#0F2340", size=10), orientation="h", y=-0.30, x=0.5, xanchor="center"))
+                fig.update_layout(
+                    barmode="stack",
+                    plot_bgcolor="#FAFCFF", paper_bgcolor="rgba(0,0,0,0)",
+                    font=dict(family="Plus Jakarta Sans, sans-serif", color="#0F2340", size=12),
+                    xaxis=dict(
+                        range=[0, 100], title_text="Pourcentage (%)",
+                        showgrid=True, gridcolor="#EDF5FD", gridwidth=1,
+                        showline=True, linecolor="#D6E8F7", zeroline=False,
+                        tickfont=dict(color="#6B88A8", size=11),
+                    ),
+                    yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)),
+                    height=max(300, len(pct.index) * 55 + 120),
+                    margin=dict(l=20, r=20, t=50, b=40),
+                    title=dict(
+                        text=f"{sel_var} selon {sel_outcome}",
+                        font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
+                        x=0.5, xanchor="center",
+                    ),
+                    legend=dict(
+                        bgcolor="rgba(255,255,255,0.95)", bordercolor="#D6E8F7", borderwidth=1,
+                        font=dict(color="#0F2340", size=10),
+                        orientation="h", y=-0.30, x=0.5, xanchor="center",
+                    ),
+                )
                 st.plotly_chart(fig, use_container_width=True, key="bivar_plotly")
 
             with c_table:
@@ -700,7 +1156,18 @@ def render_tab_croisement(df, mode):
                 lignes, colonnes = list(pct.index), list(pct.columns)
                 if len(lignes) >= 2 and len(colonnes) >= 1:
                     l1, l2 = lignes[0], lignes[1]
-                    st.markdown(f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:\'Plus Jakarta Sans\',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_outcome}</b> selon <b>{sel_var}</b>.</p><p style="margin:0 0 8px;">Par exemple, parmi les <b>« {l1} »</b> : {", ".join([f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0])}.</p><p style="margin:0;">Tandis que parmi les <b>« {l2} »</b> : {", ".join([f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0])}.</p></div>', unsafe_allow_html=True)
+                    parts_l1 = [f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0]
+                    parts_l2 = [f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0]
+                    st.markdown(
+                        f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;'
+                        f'padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;'
+                        f'font-family:\'Plus Jakarta Sans\',sans-serif;">'
+                        f'<p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_outcome}</b> selon <b>{sel_var}</b>.</p>'
+                        f'<p style="margin:0 0 8px;">Parmi les <b>« {l1} »</b> : {", ".join(parts_l1)}.</p>'
+                        f'<p style="margin:0;">Parmi les <b>« {l2} »</b> : {", ".join(parts_l2)}.</p>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
                 else:
                     st.caption("Données insuffisantes.")
 
@@ -716,21 +1183,24 @@ def main():
     inject_shared_css(current_mode)
 
     st.markdown(get_page_css(), unsafe_allow_html=True)
-    st.markdown("""
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet">
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800
+              &family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet">
+        """,
+        unsafe_allow_html=True,
+    )
 
     # ════════════════════════════════════════════════════════════
-    # TOPBAR DYNAMIQUE
+    # TOPBAR
     # ════════════════════════════════════════════════════════════
     col_top, col_switch, col_back = st.columns([5, 3, 1])
 
     with col_top:
         mode_colors = MODE_COLORS.get(current_mode, MODE_COLORS[MODE_RH])
-        accent = mode_colors["accent"]
+        accent  = mode_colors["accent"]
         accent2 = mode_colors["accent_2"]
-
         st.markdown(
             f'<div style="display:flex;align-items:center;gap:12px;background:white;border-radius:12px;'
             f'padding:14px 24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06),'
@@ -743,7 +1213,7 @@ def main():
             f'<div style="font-size:11px;color:#64748b;margin-top:1px;'
             f'font-family:\'Plus Jakarta Sans\',sans-serif;">Évaluation du bien-être et du stress perçu</div>'
             f'</div></div>',
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with col_switch:
@@ -759,24 +1229,30 @@ def main():
     # ════════════════════════════════════════════════════════════
     # UPLOAD
     # ════════════════════════════════════════════════════════════
-    uploaded_file = st.file_uploader("Charger un fichier Excel ou CSV", type=["xlsx", "xls", "csv"], key=f"uploader_{PAGE_KEY}")
+    uploaded_file = st.file_uploader(
+        "Charger un fichier Excel ou CSV",
+        type=["xlsx", "xls", "csv"],
+        key=f"uploader_{PAGE_KEY}",
+    )
     if uploaded_file is not None:
         st.session_state[f"_file_bytes_{PAGE_KEY}"] = uploaded_file.read()
-        st.session_state[f"_file_name_{PAGE_KEY}"] = uploaded_file.name
+        st.session_state[f"_file_name_{PAGE_KEY}"]  = uploaded_file.name
     if f"_file_bytes_{PAGE_KEY}" not in st.session_state:
         st.info("Veuillez charger un fichier de données pour démarrer l'analyse.")
         st.stop()
 
     file_bytes = st.session_state[f"_file_bytes_{PAGE_KEY}"]
-    file_name = st.session_state[f"_file_name_{PAGE_KEY}"]
+    file_name  = st.session_state[f"_file_name_{PAGE_KEY}"]
 
     with st.spinner("Chargement et traitement des données…"):
         df_raw = load_data_from_bytes(file_bytes, file_name)
         n_before = len(df_raw)
         df_clean, cleaning_log = clean_common_variables(df_raw)
 
-    with st.expander("📋 Journal de nettoyage", expanded=False):
+    with st.expander("Journal de nettoyage", expanded=False):
         st.text(cleaning_log)
+        st.text(f"Items PSS-10 : {sum(1 for k in PSS_ITEMS if trouver_colonne_pss(df_clean, k) is not None)}/10")
+        st.text(f"Items WHO-5 : {detect_who5_columns(df_clean)}/5")
         st.write(f"Avant: **{n_before}** — Après: **{len(df_clean)}**")
 
     if df_clean.empty:
@@ -787,17 +1263,22 @@ def main():
     # VÉRIFICATION PSS-10
     # ════════════════════════════════════════════════════════════
     pss_trouvees = sum(1 for k in PSS_ITEMS if trouver_colonne_pss(df_clean, k) is not None)
-    if pss_trouvees < 5:
+    if pss_trouvees < 8:
         st.error(f"❌ **Fichier non reconnu** — Seulement {pss_trouvees}/10 items PSS-10 détectés.")
         st.stop()
-
-    with st.sidebar:
-        st.markdown(f"**🔍 Items PSS-10 :** {pss_trouvees}/10")
+        
+        # Vérification WHO-5
+        who5_mapping = detect_who5_columns(df_clean)
+        if who5_mapping:
+            pass
+        else:
+            st.markdown("**WHO-5 :** non détecté")
 
     # ════════════════════════════════════════════════════════════
-    # CALCULS PSS-10
+    # CALCULS PSS-10 ET WHO-5
     # ════════════════════════════════════════════════════════════
     df_clean = compute_pss_scores(df_clean)
+    df_clean = compute_who5_scores(df_clean)  # ← AJOUT CRITIQUE
 
     # ════════════════════════════════════════════════════════════
     # ONGLETS
@@ -808,9 +1289,7 @@ def main():
         tabs = st.tabs(["Vue d'ensemble", "Analyse univariée"])
 
     with tabs[0]:
-        # ════════════════════════════════════════════════════════════
-        # FILTRES (spécifiques à l'onglet 1)
-        # ════════════════════════════════════════════════════════════
+        # ── Filtres ────────────────────────────────────────────
         FILTER_VARS = [
             ("Genre", "genre"),
             ("Situation matrimoniale", "situation_matrimoniale"),
@@ -829,37 +1308,34 @@ def main():
             ("Suivi psychologique", "suivi_psychologique"),
             ("Pratique sportive", "pratique_sport"),
         ]
-        
+
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
-        
-        # Ajouter l'âge numérique s'il existe
         if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
             num_vars.append(("Âge", "age"))
-        
+
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
-            
+
             with fc1:
-                cat_labels = ["— Aucun —"] + [l for l, _ in cat_vars]
+                cat_labels    = ["— Aucun —"] + [l for l, _ in cat_vars]
                 sel_cat_label = st.selectbox("Variable (catégorielle)", cat_labels, key="who5_filtre_cat")
-            
+
             with fc2:
                 if sel_cat_label != "— Aucun —":
-                    cat_col = dict(cat_vars)[sel_cat_label]
-                    modalites = sorted(df_clean[cat_col].dropna().astype(str).unique().tolist())
+                    cat_col      = dict(cat_vars)[sel_cat_label]
+                    modalites    = sorted(df_clean[cat_col].dropna().astype(str).unique().tolist())
                     sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalites, key="who5_filtre_mod")
                 else:
                     sel_modalite = "Toutes"
                     st.selectbox("Modalité", ["Toutes"], disabled=True)
-            
+
             with fc3:
-                num_labels = ["— Aucun —"] + [l for l, _ in num_vars]
+                num_labels    = ["— Aucun —"] + [l for l, _ in num_vars]
                 sel_num_label = st.selectbox("Variable (numérique)", num_labels, key="who5_filtre_num")
-                
                 if sel_num_label != "— Aucun —":
                     num_col = dict(num_vars)[sel_num_label]
-                    vals = pd.to_numeric(df_clean[num_col], errors="coerce").dropna()
+                    vals    = pd.to_numeric(df_clean[num_col], errors="coerce").dropna()
                     if not vals.empty:
                         vmin, vmax = int(vals.min()), int(vals.max())
                         if vmin == vmax:
@@ -870,7 +1346,7 @@ def main():
                         st.slider(f"Plage — {sel_num_label}", 0, 100, (0, 100), disabled=True)
                 else:
                     sel_range = None
-            
+
             with fc4:
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("Réinitialiser", key="who5_reset_filtres", use_container_width=True):
@@ -878,29 +1354,24 @@ def main():
                         if k in st.session_state:
                             del st.session_state[k]
                     st.rerun()
-        
-        # Appliquer les filtres UNIQUEMENT pour l'onglet 1
+
+        # ── Appliquer les filtres ───────────────────────────────
         mask = pd.Series(True, index=df_clean.index)
-        
         if sel_cat_label != "— Aucun —" and sel_modalite != "Toutes":
             cat_col = dict(cat_vars)[sel_cat_label]
-            mask &= df_clean[cat_col].astype(str) == sel_modalite
-        
+            mask   &= df_clean[cat_col].astype(str) == sel_modalite
         if sel_num_label != "— Aucun —" and sel_range is not None:
             num_col = dict(num_vars)[sel_num_label]
-            vals = pd.to_numeric(df_clean[num_col], errors="coerce")
-            mask &= vals.between(sel_range[0], sel_range[1])
-        
+            vals    = pd.to_numeric(df_clean[num_col], errors="coerce")
+            mask   &= vals.between(sel_range[0], sel_range[1])
+
         df_filtered = df_clean[mask].copy()
-        
         if len(df_filtered) == 0:
             st.warning("Aucune donnée ne correspond aux filtres sélectionnés.")
             st.stop()
-        
-        # ════════════════════════════════════════════════════════════
-        # CONTENU DE L'ONGLET 1 (utilise df_filtered)
-        # ════════════════════════════════════════════════════════════
+
         render_tab_overview(df_filtered, current_mode, n_before)
+
     with tabs[1]:
         render_tab_analyse(df_clean, current_mode)
 
@@ -912,7 +1383,12 @@ def main():
     # FOOTER
     # ════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown(f'<p style="text-align:center;color:#9CA3AF;font-size:0.8rem;font-family:\'Plus Jakarta Sans\',sans-serif;">{PAGE_TITLE} — YODAN Analytics © 2026</p>', unsafe_allow_html=True)
+    st.markdown(
+        f'<p style="text-align:center;color:#9CA3AF;font-size:0.8rem;'
+        f'font-family:\'Plus Jakarta Sans\',sans-serif;">'
+        f'{PAGE_TITLE} — YODAN Analytics © 2026</p>',
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":
