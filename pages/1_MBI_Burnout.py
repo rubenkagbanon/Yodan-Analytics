@@ -450,31 +450,142 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
 
 
 # =============================================================================
-# FONCTIONS INDICATEURS
+# FONCTIONS INDICATEURS AVEC COMPARAISON AUTOMATIQUE
 # =============================================================================
 
 def get_priority_info(priorite_type: str) -> tuple:
-    if priorite_type == "risque": return "#EF4444", "Risque prioritaire", "#EF4444"
-    elif priorite_type == "levier": return "#22C55E", "Levier performance", "#22C55E"
-    elif priorite_type == "vigilance": return "#F59E0B", "Vigilance", "#F59E0B"
-    elif priorite_type == "strategique": return "#3B82F6", "Stratégique", "#3B82F6"
-    elif priorite_type == "protecteur": return "#22C55E", "Levier protecteur", "#22C55E"
+    """
+    Retourne les informations de style selon le type de priorité
+    
+    Types disponibles:
+    - "risque": couleur rouge, alerte prioritaire
+    - "vigilance": couleur orange/jaune, à surveiller
+    - "levier": couleur verte, performance OK
+    - "strategique": couleur bleue, suivi stratégique
+    """
+    if priorite_type == "risque":
+        return "#EF4444", "Risque prioritaire", "#EF4444"
+    elif priorite_type == "levier":
+        return "#22C55E", "Levier performance", "#22C55E"
+    elif priorite_type == "vigilance":
+        return "#F59E0B", "Vigilance", "#F59E0B"
+    elif priorite_type == "strategique":
+        return "#3B82F6", "Suivi stratégique", "#3B82F6"
     return "#6B7280", "", "#6B7280"
 
 
-def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type: str) -> str:
+def comparer_valeur_seuil(valeur, seuil, operateur: str) -> bool:
+    """
+    Compare une valeur avec un seuil selon l'opérateur
+    Retourne True si la condition est vraie (indique un "danger"/alerte)
+    """
+    try:
+        # Nettoyer la valeur (enlever le % si présent)
+        if isinstance(valeur, str):
+            valeur_clean = valeur.replace('%', '').replace(',', '.').strip()
+            val_num = float(valeur_clean)
+        else:
+            val_num = float(valeur)
+        
+        # Nettoyer le seuil
+        if isinstance(seuil, str):
+            seuil_clean = seuil.replace('%', '').replace(',', '.').strip()
+            seuil_num = float(seuil_clean)
+        else:
+            seuil_num = float(seuil)
+        
+        # Comparaison selon l'opérateur
+        if operateur == ">":
+            return val_num > seuil_num
+        elif operateur == ">=":
+            return val_num >= seuil_num
+        elif operateur == "<":
+            return val_num < seuil_num
+        elif operateur == "<=":
+            return val_num <= seuil_num
+        elif operateur == "==" or operateur == "=":
+            return val_num == seuil_num
+        else:
+            # Par défaut, on considère que dépasser le seuil est l'alerte
+            return val_num > seuil_num
+    except (ValueError, TypeError):
+        # Si la conversion échoue, on retourne False (pas d'alerte)
+        return False
+
+
+def get_dynamic_priority(valeur, seuil: str, operateur: str, priorite_alerte: str) -> tuple:
+    """
+    Détermine dynamiquement la priorité à afficher en comparant la valeur avec le seuil
+    
+    Règles:
+    - Si la valeur DÉPASSE le seuil (comparaison selon opérateur) → on applique priorite_alerte (risque/vigilance)
+    - Sinon → c'est "levier performance" (vert) car c'est bon
+    
+    Args:
+        valeur: La valeur calculée
+        seuil: Le seuil à comparer
+        operateur: Opérateur de comparaison (>, <, >=, <=)
+        priorite_alerte: Priorité à afficher si le seuil est dépassé
+    
+    Returns:
+        tuple: (couleur, texte, couleur_texte)
+    """
+    # Vérifier si le seuil est dépassé
+    seuil_depasse = comparer_valeur_seuil(valeur, seuil, operateur)
+    
+    if seuil_depasse:
+        # Le seuil est dépassé → on affiche l'alerte (rouge ou orange selon priorite_alerte)
+        return get_priority_info(priorite_alerte)
+    else:
+        # Le seuil n'est pas dépassé → tout va bien → Levier performance (vert)
+        return get_priority_info("levier")
+
+
+def render_indicator_card(nom: str, valeur, seuil: str = None, operateur: str = "", priorite_type: str = "levier") -> str:
+    """
+    Affiche une carte d'indicateur avec style déterminé dynamiquement
+    
+    Paramètres:
+    - nom: Nom de l'indicateur
+    - valeur: Valeur à afficher (sera convertie en str)
+    - seuil: Valeur seuil (optionnel)
+    - operateur: Opérateur de comparaison (">", "<", ">=", "<=")
+    - priorite_type: Priorité à afficher SI le seuil est dépassé
+                (ex: "risque", "vigilance", "strategique")
+    
+    La couleur finale dépend de la comparaison valeur/seuil:
+    - Si seuil dépassé → couleur = priorite_type (rouge/orange/bleu)
+    - Sinon → couleur = "levier" (vert)
+    """
     if valeur is None:
         return '<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:12px;padding:16px;text-align:center;min-height:170px;display:flex;align-items:center;justify-content:center;"><p style="color:#94A3B8;font-size:0.85rem;">Données<br>insuffisantes</p></div>'
-    bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+    
+    # Déterminer dynamiquement la priorité à afficher
+    if seuil is not None and operateur:
+        bordure_color, priorite_texte, priorite_color = get_dynamic_priority(
+            valeur, seuil, operateur, priorite_type
+        )
+    else:
+        # Pas de seuil défini → on affiche la priorité statique
+        bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+    
     valeur_color = bordure_color
     priorite_bg = bordure_color + "18"
-    seuil_str = f"Seuil {operateur} {seuil}" if seuil is not None else ""
+    
+    # Construction du texte du seuil
+    seuil_str = ""
+    if seuil is not None:
+        if operateur:
+            seuil_str = f"Seuil {operateur} {seuil}"
+        else:
+            seuil_str = f"Seuil : {seuil}"
     
     # Taille adaptative : plus petit si la valeur est longue
     valeur_str = str(valeur)
     taille_police = "36px" if len(valeur_str) <= 10 else "22px"
     
     return f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;padding:20px 14px 16px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,0.06);border-top:4px solid {bordure_color};min-height:190px;display:flex;flex-direction:column;justify-content:space-between;"><div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:14px;font-weight:700;color:#1E293B;margin:0;line-height:1.3;">{nom}</p></div><div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:{taille_police};font-weight:800;color:{valeur_color};margin:8px 0;line-height:1;">{valeur}</p><span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span><p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">{seuil_str}</p></div></div>'
+
 
 # =============================================================================
 # CHARGEMENT DES DONNÉES
@@ -696,6 +807,7 @@ def main():
             
             if is_rh(current_mode):
                 st.markdown('<div class="section-title">Indicateurs RH/DG</div>', unsafe_allow_html=True)
+                
                 nb_burnout_avere = int((df_filtered['niveau_burnout'] == 'Burnout avéré').sum())
                 taux_burnout = round((nb_burnout_avere / n) * 100, 1)
                 ee_moyen = round(df_filtered['ee_score'].mean(), 1)
@@ -715,25 +827,48 @@ def main():
                     profil_value = "N/A"
                     pire_unite = None
                 
+                # Indicateurs RH avec comparaison automatique
                 indicateurs_rh = [
-                    {"nom": "Taux de burnout avéré", "valeur": f"{taux_burnout:.1f}%", "seuil": "> 5%", "priorite_type": "risque"},
-                    {"nom": "Score EE moyen", "valeur": f"{ee_moyen:.1f}", "seuil": "> 27/54", "priorite_type": "risque"},
-                    {"nom": "Taux de pré-burnout", "valeur": f"{taux_pre_burnout:.1f}%", "seuil": "> 40%", "priorite_type": "vigilance"},
-                    {"nom": "Score PA moyen", "valeur": f"{pa_moyen:.1f}", "seuil": "< 32/48", "priorite_type": "vigilance"},
-                    {"nom": "Profil MBI par direction", "valeur": profil_value,
-                    "seuil": f"Score {pire_unite['score_risque_moyen']:.1f}" if dir_col and pire_unite is not None else "Par unité",
-                    "priorite_type": "strategique"},
+                    {"nom": "Taux de burnout avéré", 
+                    "valeur": f"{taux_burnout:.1f}%", 
+                    "seuil": "5%", 
+                    "operateur": ">",
+                    "priorite_type": "risque"},  # Si >5% → rouge, sinon vert
+                    {"nom": "Score d'Épuisement Émotionnel ", 
+                    "valeur": f"{ee_moyen:.1f}", 
+                    "seuil": "27", 
+                    "operateur": ">",
+                    "priorite_type": "risque"},  # Si >27 → rouge, sinon vert
+                    {"nom": "Taux de pré-burnout", 
+                    "valeur": f"{taux_pre_burnout:.1f}%", 
+                    "seuil": "40%", 
+                    "operateur": ">",
+                    "priorite_type": "vigilance"},  # Si >40% → orange, sinon vert
+                    {"nom": "Score de Réalisation Personnelle ", 
+                    "valeur": f"{pa_moyen:.1f}", 
+                    "seuil": "32", 
+                    "operateur": "<",
+                    "priorite_type": "vigilance"},  # Si <32 → orange, sinon vert
+                    {"nom": "Profil MBI par direction", 
+                    "valeur": profil_value,
+                    "seuil": None, 
+                    "operateur": "",
+                    "priorite_type": "strategique"},  # Toujours bleu (info stratégique)
                 ]
                 cols = st.columns(5)
                 for i, indic in enumerate(indicateurs_rh):
                     with cols[i]:
                         st.markdown(render_indicator_card(
-                            nom=indic["nom"], valeur=indic["valeur"],
-                            seuil=indic["seuil"], operateur="", priorite_type=indic["priorite_type"]
+                            nom=indic["nom"], 
+                            valeur=indic["valeur"],
+                            seuil=indic.get("seuil"), 
+                            operateur=indic.get("operateur", ""), 
+                            priorite_type=indic["priorite_type"]
                         ), unsafe_allow_html=True)
             
             if is_medecin(current_mode):
                 st.markdown('<div class="section-title">Indicateurs Médecin du Travail</div>', unsafe_allow_html=True)
+                
                 nb_ee_clinique = int((df_filtered['ee_score'] >= 27).sum())
                 taux_ee_clinique = round((nb_ee_clinique / n) * 100, 1)
                 nb_burnout_complet = int((df_filtered['niveau_burnout'] == 'Burnout avéré').sum())
@@ -750,20 +885,43 @@ def main():
                     else: taux_burnout_maladie = 0
                 else: taux_burnout_maladie = None
                 
+                # Indicateurs Médecin avec comparaison automatique
                 indicateurs_med = [
-                    {"nom": "EE clinique (EE ≥ 27)", "valeur": f"{taux_ee_clinique:.1f}%", "seuil": "Tout cas ≥ 27", "priorite_type": "risque"},
-                    {"nom": "Burnout complet", "valeur": f"{taux_burnout_complet:.1f}%", "seuil": "< 5% OMS", "priorite_type": "risque"},
-                    {"nom": "DP clinique (DP ≥ 10)", "valeur": f"{taux_dp_clinique:.1f}%", "seuil": "Tout cas ≥ 10", "priorite_type": "risque"},
-                    {"nom": "MBI × maladie chronique", "valeur": f"{taux_burnout_maladie:.1f}%" if taux_burnout_maladie is not None else "N/A",
-                    "seuil": "> 20%", "priorite_type": "risque"},
-                    {"nom": "Suivi longitudinal EE", "valeur": "N/A", "seuil": "Δ > 3 = signal", "priorite_type": "vigilance"},
+                    {"nom": "Épuisement Émotionnel clinique", 
+                    "valeur": f"{taux_ee_clinique:.1f}%", 
+                    "seuil": "27%", 
+                    "operateur": ">",
+                    "priorite_type": "risque"},  
+                    {"nom": "Burnout complet", 
+                    "valeur": f"{taux_burnout_complet:.1f}%", 
+                    "seuil": "5%", 
+                    "operateur": ">",
+                    "priorite_type": "risque"},  
+                    {"nom": "Dépersonnalisation clinique", 
+                    "valeur": f"{taux_dp_clinique:.1f}%", 
+                    "seuil": "10%", 
+                    "operateur": ">",
+                    "priorite_type": "risque"},  # Si >0% → rouge, sinon vert
+                    {"nom": "MBI × maladie chronique", 
+                    "valeur": f"{taux_burnout_maladie:.1f}%" if taux_burnout_maladie is not None else "N/A",
+                    "seuil": "20%", 
+                    "operateur": ">",
+                    "priorite_type": "risque"},  # Si >20% → rouge, sinon vert
+                    {"nom": "Suivi longitudinal", 
+                    "valeur": "N/A", 
+                    "seuil": None,
+                    "operateur": "",
+                    "priorite_type": None},
                 ]
                 cols = st.columns(5)
                 for i, indic in enumerate(indicateurs_med):
                     with cols[i]:
                         st.markdown(render_indicator_card(
-                            nom=indic["nom"], valeur=indic["valeur"],
-                            seuil=indic["seuil"], operateur="", priorite_type=indic["priorite_type"]
+                            nom=indic["nom"], 
+                            valeur=indic["valeur"],
+                            seuil=indic.get("seuil"), 
+                            operateur=indic.get("operateur", ""), 
+                            priorite_type=indic["priorite_type"]
                         ), unsafe_allow_html=True)
         else:
             st.warning(f"Aucune question MBI détectée. ({mbi_trouvees}/22 questions trouvées)")    
@@ -914,6 +1072,7 @@ def main():
                         st.caption("Données insuffisantes pour générer une interprétation automatique.")
             elif sel_col:
                 st.info("Sélectionnez une variable pour voir sa distribution.")
+    
     # ╔══════════════════════════════════════════════════════════════╗
     # ║  ONGLET 3 : ANALYSE BIVARIÉE (Médecin uniquement)            ║
     # ╚══════════════════════════════════════════════════════════════╝
@@ -1048,7 +1207,7 @@ def main():
                                     tickfont=dict(color="#0F2340", size=11)
                                 ),
                                 height=max(300, len(pct.index) * 55 + 120),
-                                margin=dict(l=20, r=20, t=50, b=40),  # ← b augmenté de 40 à 80
+                                margin=dict(l=20, r=20, t=50, b=40),
                                 title=dict(
                                     text=f"{sel_var} selon {sel_outcome}",
                                     font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
@@ -1060,7 +1219,7 @@ def main():
                                     borderwidth=1,
                                     font=dict(color="#0F2340", size=10),
                                     orientation="h",
-                                    y=-0.30,  # ← descendu de -0.15 à -0.25
+                                    y=-0.30,
                                     x=0.5,
                                     xanchor="center"
                                 )
@@ -1096,7 +1255,6 @@ def main():
                             
                             if len(lignes) >= 2 and len(colonnes) >= 1:
                                 l1, l2 = lignes[0], lignes[1]
-                                c1 = colonnes[0]
                                 
                                 interpretation = f"""
                                 <div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;
@@ -1120,6 +1278,7 @@ def main():
                                 st.caption("Données insuffisantes pour générer une interprétation automatique.")
                 else:
                     st.info("Sélectionnez deux variables pour voir l'analyse croisée.")
+    
     # ── FOOTER ───────────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown(f'<p style="text-align:center;color:#9CA3AF;font-size:0.8rem;">{PAGE_TITLE} — YODAN Analytics © 2026</p>', unsafe_allow_html=True)

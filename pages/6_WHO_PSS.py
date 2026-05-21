@@ -76,7 +76,7 @@ PSS_ITEMS = {
     "Q10": "au_cours_du_dernier_mois_a_quelle_frequence_vous_etes_vous_senti_depasse_par_les_evenements",
 }
 
-# ── CORRECTION 1 : items positifs (à inverser) = Q4, Q5, Q6, Q7, Q9
+# Items positifs (à inverser) = Q4, Q5, Q6, Q7, Q9
 PSS_INVERTED = ["Q4", "Q5", "Q6", "Q7", "Q9"]
 
 # Items positifs utilisés pour le calcul du sentiment de contrôle
@@ -94,7 +94,7 @@ WHO5_COLUMNS = [
 ]
 
 # ══════════════════════════════════════════════════════════
-# VARIABLES UNIFORMES POUR LES ANALYSES UNIVARIÉES
+# VARIABLES UNIFORMES POUR LES ANALYSES UNIVARIEES
 # ══════════════════════════════════════════════════════════
 VARIABLES_UNIVARIEES = [
     ("Genre", "genre"),
@@ -137,7 +137,7 @@ def get_page_css() -> str:
     """
 
 # =============================================================================
-# FONCTIONS UTILITAIRES DE NETTOYAGE (STANDARDISÉES)
+# FONCTIONS UTILITAIRES DE NETTOYAGE (STANDARDISEES)
 # =============================================================================
 
 def _pp_normalize_text(text: str) -> str:
@@ -173,7 +173,6 @@ def _find_age_numeric_col(df: pd.DataFrame) -> str | None:
 
 
 def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) -> tuple:
-    """Nettoyage standardisé pour toutes les pages."""
     cleaned_df = df.copy()
     ops = []
 
@@ -198,7 +197,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
             ops.append(f"Colonne '{c}' supprimée ({missing_ratio[c]*100:.1f}% NA)")
         cleaned_df = cleaned_df.drop(columns=cols_to_drop)
 
-    # ÂGE
+    # AGE
     age_col = _find_age_numeric_col(cleaned_df)
     if age_col is not None:
         cleaned_df['age'] = pd.to_numeric(cleaned_df[age_col], errors="coerce")
@@ -219,7 +218,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
         else:
             ops.append("Âge: aucune colonne trouvée")
 
-    # ANCIENNETÉ
+    # ANCIENNETE
     anciennete_num_col = _find_by_patterns(list(cleaned_df.columns), [r"anciennete", r"anciennet"])
     if anciennete_num_col is not None:
         if pd.api.types.is_numeric_dtype(cleaned_df[anciennete_num_col]):
@@ -310,18 +309,17 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
     if n_dropped > 0:
         ops.append(f"{n_dropped} observation(s) supprimée(s) — {n_after_drop} restantes")
     else:
-        ops.append(f"✅ Aucune observation avec valeurs manquantes — {n_after_drop} observations conservées")
+        ops.append(f"Aucune observation avec valeurs manquantes — {n_after_drop} observations conservées")
 
     cleaning_log = "Nettoyage appliqué:\n- " + "\n- ".join(ops) if ops else "Aucune opération appliquée."
     return cleaned_df, cleaning_log
 
 
 # =============================================================================
-# FONCTIONS DE DÉTECTION PSS-10
+# FONCTIONS DE DETECTION PSS-10
 # =============================================================================
 
 def trouver_colonne_pss(df: pd.DataFrame, item_key: str) -> str | None:
-    """Trouve la colonne correspondant à un item PSS-10."""
     question_text = PSS_ITEMS.get(item_key)
     if question_text is None:
         return None
@@ -347,19 +345,6 @@ def trouver_colonne_pss(df: pd.DataFrame, item_key: str) -> str | None:
 
 
 def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calcule le score PSS-10 avec inversion correcte des items positifs.
-
-    Items positifs (inversés avant sommation) : Q4, Q5, Q6, Q7, Q9
-    Items négatifs (directs)                  : Q1, Q2, Q3, Q8, Q10
-    Formule inversion : score_item = 4 - valeur_brute
-    Score total ∈ [0 ; 40]
-
-    Catégories (Cohen 1983) :
-        0–13  → Stress faible
-    14–26  → Stress modéré
-    27–40  → Stress élevé
-    """
     out = df.copy()
 
     pss_cols = {}
@@ -372,7 +357,7 @@ def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
     if not pss_cols:
         return out
 
-    # ── Inversion des items positifs Q4, Q5, Q6, Q7, Q9
+    # Inversion des items positifs Q4, Q5, Q6, Q7, Q9
     for inv_key in PSS_INVERTED:
         if inv_key in pss_cols:
             out[f"pss_{inv_key}"] = 4 - out[f"pss_{inv_key}"]
@@ -380,14 +365,14 @@ def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
     score_cols = [f"pss_{k}" for k in pss_cols]
     out["score_stress"] = out[score_cols].sum(axis=1)
 
-    # ── Seuils corrects selon Cohen 1983 (0-13 / 14-26 / 27-40)
+    # Seuils selon Cohen 1983 (0-13 / 14-26 / 27-40)
     def cat_stress(s):
         if pd.isna(s):
-            return "Non défini"
+            return "Non defini"
         if s >= 27:
-            return "Stress élevé"
+            return "Stress eleve"
         elif s >= 14:
-            return "Stress modéré"
+            return "Stress modere"
         else:
             return "Stress faible"
 
@@ -397,11 +382,10 @@ def compute_pss_scores(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # =============================================================================
-# FONCTIONS WHO-5 (BIEN-ÊTRE)
+# FONCTIONS WHO-5 (BIEN-ETRE)
 # =============================================================================
 
 def detect_who5_columns(df: pd.DataFrame) -> dict:
-    """Détecte les colonnes WHO-5 par correspondance floue."""
     who5_mapping = {}
     
     for expected in WHO5_COLUMNS:
@@ -410,7 +394,6 @@ def detect_who5_columns(df: pd.DataFrame) -> dict:
         
         for col in df.columns:
             col_norm = _pp_normalize_text(col)
-            # Recherche par mots-clés
             if ("gai" in expected_norm and "gai" in col_norm) or \
             ("calme" in expected_norm and "calme" in col_norm) or \
             ("actif" in expected_norm and "actif" in col_norm) or \
@@ -418,7 +401,6 @@ def detect_who5_columns(df: pd.DataFrame) -> dict:
             ("quotidienne" in expected_norm and ("quotidienne" in col_norm or "interessantes" in col_norm)):
                 found = col
                 break
-            # Fallback: similarité
             score = SequenceMatcher(None, expected_norm, col_norm).ratio()
             if score > 0.6:
                 found = col
@@ -428,20 +410,10 @@ def detect_who5_columns(df: pd.DataFrame) -> dict:
     
     return who5_mapping
 
+
 def compute_who5_scores(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calcule le score WHO-5 (bien-être psychologique).
-    
-    Chaque item est noté de 0 à 5 (ou de 1 à 6 selon l'échelle).
-    Score total transformé en % : (somme / score_max) * 100
-    Seuils cliniques :
-        < 50%  → Détresse possible
-        50-72% → Bien-être modéré
-        ≥ 72%  → Bien-être élevé
-    """
     out = df.copy()
     
-    # Détection des colonnes WHO-5
     who5_mapping = detect_who5_columns(out)
     
     if not who5_mapping:
@@ -450,77 +422,53 @@ def compute_who5_scores(df: pd.DataFrame) -> pd.DataFrame:
         out['niveau_bien_etre'] = "Non disponible"
         return out
     
-    # Collecte des scores
     scores = []
     for expected, col in who5_mapping.items():
-        # Conversion en numérique
         vals = pd.to_numeric(out[col], errors='coerce')
         
-        # Détection de l'échelle (0-5 ou 1-6)
         if vals.max() <= 5:
-            # Échelle 0-5, conversion en 0-5
             scores.append(vals)
         elif vals.max() <= 6:
-            # Échelle 1-6, conversion en 0-5
             scores.append(vals - 1)
         else:
-            # Valeurs aberrantes
             scores.append(vals)
     
     if scores:
-        # Somme des items (max = 5 items * 5 = 25)
         out['who5_sum'] = sum(scores)
-        # Conversion en pourcentage (max 100)
         out['who5_pct'] = (out['who5_sum'] / 25) * 100
         
-        # Catégorisation clinique
         def cat_who5(pct):
             if pd.isna(pct):
                 return "Non disponible"
             elif pct < 50:
-                return "Détresse probable"
+                return "Detresse probable"
             elif pct < 72:
-                return "Bien-être modéré"
+                return "Bien-etre modere"
             else:
-                return "Bien-être élevé"
+                return "Bien-etre eleve"
         
         out['niveau_bien_etre'] = out['who5_pct'].apply(cat_who5)
-        
-        # Score moyen arrondi pour affichage
         out['who5_score'] = out['who5_pct'].round(1)
     
     return out
 
 
 # =============================================================================
-# FONCTIONS D'ÉVOLUTION LONGITUDINALE
+# FONCTIONS D'EVOLUTION LONGITUDINALE
 # =============================================================================
 
 def compute_longitudinal_evolution(df: pd.DataFrame, id_col: str = "identifiant", wave_col: str = "vague") -> pd.DataFrame:
-    """
-    Calcule l'évolution entre vagues pour les scores WHO-5 et PSS-10.
-    
-    Nécessite :
-        - Une colonne d'identifiant unique par personne
-        - Une colonne indiquant la vague (ex: "T1", "T2")
-        - Les scores calculés (who5_pct, score_stress)
-    
-    Retourne un DataFrame avec les deltas individuels et agrégés.
-    """
     out = df.copy()
     
-    # Vérification des colonnes nécessaires
     if id_col not in out.columns or wave_col not in out.columns:
-        return pd.DataFrame()  # Données longitudinales non disponibles
+        return pd.DataFrame()
     
-    # Vérification des scores
     has_who5 = 'who5_pct' in out.columns
     has_stress = 'score_stress' in out.columns
     
     if not has_who5 and not has_stress:
         return pd.DataFrame()
     
-    # Pivot pour comparer T1 et T2
     evolution_results = []
     
     for pid in out[id_col].unique():
@@ -529,7 +477,6 @@ def compute_longitudinal_evolution(df: pd.DataFrame, id_col: str = "identifiant"
         if len(person_data) < 2:
             continue
         
-        # Récupération des valeurs T1 et T2
         t1 = person_data.iloc[0]
         t2 = person_data.iloc[1]
         
@@ -592,8 +539,8 @@ def _compute_cardio_risk(df: pd.DataFrame) -> tuple:
             score += float((s.isin(['oui', 'yes', '1', 'vrai', 'true'])).sum() / n) * w
     score = round(score, 2)
     if score <= 1.5:   return score, "Faible",  "#16A37F"
-    elif score <= 3.0: return score, "Modéré",  "#F5A623"
-    else:              return score, "Élevé",   "#E8504A"
+    elif score <= 3.0: return score, "Modere",  "#F5A623"
+    else:              return score, "Eleve",   "#E8504A"
 
 
 def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
@@ -601,17 +548,16 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     if n_before_cleaning is None:
         n_before_cleaning = n
 
-    # ÂGE
     if 'age' in df.columns:
         age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
         if not age_num.empty:
             age_display  = f"{int(round(age_num.median()))} ans"
-            age_subtitle = "Âge médian"
+            age_subtitle = "Age median"
         else:
             age_display, age_subtitle = "—", "non disponible"
     elif 'Tranche_dage' in df.columns:
         age_str   = df['Tranche_dage'].astype(str).str.strip()
-        age_clean = age_str[~age_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
+        age_clean = age_str[~age_str.str.lower().isin(['non renseigne', 'nan', '', 'none'])]
         if not age_clean.empty:
             vc = age_clean.value_counts()
             age_display  = vc.index[0]
@@ -623,7 +569,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
 
     if 'Tranche_anciennete' in df.columns:
         anc_str   = df['Tranche_anciennete'].astype(str).str.strip()
-        anc_clean = anc_str[~anc_str.str.lower().isin(['non renseigné', 'nan', '', 'none'])]
+        anc_clean = anc_str[~anc_str.str.lower().isin(['non renseigne', 'nan', '', 'none'])]
         if not anc_clean.empty:
             vc = anc_clean.value_counts()
             anc_display, anc_subtitle = vc.index[0], f"Classe dominante ({(vc.iloc[0]/len(anc_clean))*100:.0f}%)"
@@ -632,7 +578,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     elif 'anciennete' in df.columns:
         anc_num = pd.to_numeric(df['anciennete'], errors='coerce').dropna()
         anc_display  = f"{round(anc_num.median())} ans" if not anc_num.empty else "—"
-        anc_subtitle = "médiane" if not anc_num.empty else "non disponible"
+        anc_subtitle = "mediane" if not anc_num.empty else "non disponible"
     else:
         anc_display, anc_subtitle = "—", "non disponible"
 
@@ -658,36 +604,75 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        st.markdown(kpi_card("fas fa-users", "#1D78F5", "#EBF3FF", "#1D78F5", n, "", f"sur {n_before_cleaning} observations", "Répondants analysés"), unsafe_allow_html=True)
+        st.markdown(kpi_card("fas fa-users", "#1D78F5", "#EBF3FF", "#1D78F5", n, "", f"sur {n_before_cleaning} observations", "Repondants analyses"), unsafe_allow_html=True)
     with c2:
         st.markdown(kpi_card(genre_icon, genre_color, genre_bg, genre_color, genre_display, "", genre_subtitle, "Genre dominant"), unsafe_allow_html=True)
     with c3:
-        st.markdown(kpi_card("fas fa-calendar-alt", "#16A37F", "#E8F8EF", "#16A37F", age_display, "", age_subtitle, "Âge"), unsafe_allow_html=True)
+        st.markdown(kpi_card("fas fa-calendar-alt", "#16A37F", "#E8F8EF", "#16A37F", age_display, "", age_subtitle, "Age"), unsafe_allow_html=True)
     with c4:
-        st.markdown(kpi_card("fas fa-clock", "#F5A623", "#FEF5E7", "#F5A623", anc_display, "", anc_subtitle, "Ancienneté"), unsafe_allow_html=True)
+        st.markdown(kpi_card("fas fa-clock", "#F5A623", "#FEF5E7", "#F5A623", anc_display, "", anc_subtitle, "Anciennete"), unsafe_allow_html=True)
     with c5:
         st.markdown(kpi_card("fas fa-heart", cardio_color, "#FEF0EF", cardio_color, cardio_label, "", f"Score {cardio_score:.1f}/5", "Risque cardio-vasc."), unsafe_allow_html=True)
 
 
 # =============================================================================
-# FONCTIONS INDICATEURS (CORRIGÉE)
+# FONCTIONS INDICATEURS AVEC COMPARAISON AUTOMATIQUE
 # =============================================================================
 
 def get_priority_info(priorite_type: str) -> tuple:
-    if priorite_type == "risque":      return "#EF4444", "Risque prioritaire", "#EF4444"
-    elif priorite_type == "levier":    return "#22C55E", "Levier performance", "#22C55E"
-    elif priorite_type == "vigilance": return "#F59E0B", "Vigilance",          "#F59E0B"
-    elif priorite_type == "strategique": return "#3B82F6", "Stratégique",      "#3B82F6"
-    elif priorite_type == "protecteur":  return "#22C55E", "Levier protecteur","#22C55E"
+    if priorite_type == "risque":
+        return "#EF4444", "Risque prioritaire", "#EF4444"
+    elif priorite_type == "levier":
+        return "#22C55E", "Levier performance", "#22C55E"
+    elif priorite_type == "vigilance":
+        return "#F59E0B", "Vigilance", "#F59E0B"
+    elif priorite_type == "strategique":
+        return "#3B82F6", "Suivi strategique", "#3B82F6"
+    elif priorite_type == "protecteur":
+        return "#22C55E", "Levier protecteur", "#22C55E"
     return "#6B7280", "", "#6B7280"
 
 
-def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type: str) -> str:
-    """
-    Affiche une carte d'indicateur.
-    Si valeur est None ou "N/A", affiche "NA" au lieu de "Données insuffisantes".
-    """
-    # Vérifier si la valeur est manquante ou NA
+def comparer_valeur_seuil(valeur, seuil, operateur: str) -> bool:
+    try:
+        if isinstance(valeur, str):
+            valeur_clean = valeur.replace('%', '').replace(',', '.').strip()
+            val_num = float(valeur_clean)
+        else:
+            val_num = float(valeur)
+        
+        if isinstance(seuil, str):
+            seuil_clean = seuil.replace('%', '').replace(',', '.').strip()
+            seuil_num = float(seuil_clean)
+        else:
+            seuil_num = float(seuil)
+        
+        if operateur == ">":
+            return val_num > seuil_num
+        elif operateur == ">=":
+            return val_num >= seuil_num
+        elif operateur == "<":
+            return val_num < seuil_num
+        elif operateur == "<=":
+            return val_num <= seuil_num
+        elif operateur == "==" or operateur == "=":
+            return val_num == seuil_num
+        else:
+            return val_num > seuil_num
+    except (ValueError, TypeError):
+        return False
+
+
+def get_dynamic_priority(valeur, seuil: str, operateur: str, priorite_alerte: str) -> tuple:
+    seuil_depasse = comparer_valeur_seuil(valeur, seuil, operateur)
+    
+    if seuil_depasse:
+        return get_priority_info(priorite_alerte)
+    else:
+        return get_priority_info("levier")
+
+
+def render_indicator_card(nom: str, valeur, seuil: str = None, operateur: str = "", priorite_type: str = "levier") -> str:
     is_na = False
     if valeur is None:
         is_na = True
@@ -696,7 +681,6 @@ def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type
     elif isinstance(valeur, float) and np.isnan(valeur):
         is_na = True
     
-    # Si données insuffisantes, afficher "NA" avec le nom du KPI
     if is_na:
         bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
         priorite_bg = bordure_color + "18"
@@ -712,15 +696,25 @@ def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type
             f'font-weight:800;color:#94A3B8;margin:8px 0;line-height:1;">NA</p>'
             f'<span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;'
             f'font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span>'
-            f'<p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">Données non disponibles</p></div></div>'
+            f'<p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">Donnees non disponibles</p></div></div>'
         )
     
-    # Données valides - affichage normal
-    bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
-    valeur_color = bordure_color
-    priorite_bg  = bordure_color + "18"
-    seuil_str    = f"Seuil {operateur} {seuil}" if seuil is not None else ""
-    valeur_str   = str(valeur)
+    if seuil is not None and operateur:
+        bordure_color, priorite_texte, priorite_color = get_dynamic_priority(
+            valeur, seuil, operateur, priorite_type
+        )
+    else:
+        bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+    
+    priorite_bg = bordure_color + "18"
+    seuil_str = ""
+    if seuil is not None:
+        if operateur:
+            seuil_str = f"Seuil {operateur} {seuil}"
+        else:
+            seuil_str = f"Seuil : {seuil}"
+    
+    valeur_str = str(valeur)
     taille_police = "36px" if len(valeur_str) <= 10 else "22px"
     
     return (
@@ -731,7 +725,7 @@ def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type
         f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:14px;font-weight:700;'
         f'color:#1E293B;margin:0;line-height:1.3;">{nom}</p></div>'
         f'<div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:{taille_police};'
-        f'font-weight:800;color:{valeur_color};margin:8px 0;line-height:1;">{valeur}</p>'
+        f'font-weight:800;color:{bordure_color};margin:8px 0;line-height:1;">{valeur}</p>'
         f'<span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;'
         f'font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span>'
         f'<p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">{seuil_str}</p></div></div>'
@@ -739,7 +733,7 @@ def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type
 
 
 # =============================================================================
-# CHARGEMENT DES DONNÉES
+# CHARGEMENT DES DONNEES
 # =============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -758,18 +752,14 @@ def load_data_from_bytes(file_bytes: bytes, file_name: str) -> pd.DataFrame:
 # =============================================================================
 
 def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
-    """Onglet Vue d'ensemble — KPIs population + indicateurs WHO-5 · PSS-10."""
-
-    st.markdown('<div class="section-title">Données Générales de la Population</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Donnees Generales de la Population</div>', unsafe_allow_html=True)
     render_kpi_row(df, n_before_cleaning=n_before)
 
     n = len(df)
 
-    # ── Calculs PSS-10 ──────────────────────────────────────────────────────
     score_moyen  = df["score_stress"].mean() if "score_stress" in df.columns else None
-    pct_eleve    = (df["niveau_stress"] == "Stress élevé").sum() / n * 100 if "niveau_stress" in df.columns else None
+    pct_eleve    = (df["niveau_stress"] == "Stress eleve").sum() / n * 100 if "niveau_stress" in df.columns else None
 
-    # ── Sentiment de contrôle sur items positifs Q4,Q5,Q6,Q7,Q9
     controle_cols = [f"pss_{k}" for k in PSS_ITEMS_POSITIFS if f"pss_{k}" in df.columns]
     if controle_cols:
         controle_moyen = df[controle_cols].mean().mean()
@@ -777,60 +767,53 @@ def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
     else:
         controle_pct = None
 
-    # ── Calculs WHO-5 (bien-être) ───────────────────────────────────────────
     who5_moyen = df["who5_pct"].mean() if "who5_pct" in df.columns else None
     who5_display = f"{who5_moyen:.1f}%" if who5_moyen is not None else "N/A"
     
-    # ── Évolution longitudinale ─────────────────────────────────────────────
     evo_df = compute_longitudinal_evolution(df)
     delta_display = "N/A"
-    alerte = ""
     if not evo_df.empty and 'delta_who5' in evo_df.columns:
         delta_moyen = evo_df['delta_who5'].mean()
         delta_display = f"{delta_moyen:+.1f} pts"
-        alerte = "🔴" if delta_moyen > 5 else ("🟢" if delta_moyen < -5 else "🟡")
 
-    # ══════════════════════════════════════════════════════════
-    # INDICATEURS RH / DG
-    # ══════════════════════════════════════════════════════════
     if is_rh(mode):
         st.markdown('<div class="section-title">Indicateurs RH/DG</div>', unsafe_allow_html=True)
         
         indicateurs_rh = [
             {
-                "nom": "Score stress perçu moyen (PSS-10)",
+                "nom": "Score stress percu moyen (PSS-10)",
                 "valeur": f"{score_moyen:.1f}" if score_moyen is not None else "N/A",
-                "seuil": "> 20/40",
+                "seuil": "20",
                 "operateur": ">",
                 "priorite_type": "risque",
             },
             {
-                "nom": "Stress élevé (PSS ≥ 27)",
+                "nom": "Stress eleve (PSS >= 27)",
                 "valeur": f"{pct_eleve:.1f}%" if pct_eleve is not None else "N/A",
-                "seuil": "> 10% OMS",
+                "seuil": "10%",
                 "operateur": ">",
                 "priorite_type": "risque",
             },
             {
-                "nom": "Sentiment de contrôle perçu",
+                "nom": "Sentiment de controle percu",
                 "valeur": f"{controle_pct:.1f}%" if controle_pct is not None else "N/A",
-                "seuil": "< 50%",
+                "seuil": "50%",
                 "operateur": "<",
                 "priorite_type": "vigilance",
             },
             {
-                "nom": "WHO-5 bien-être moyen",
+                "nom": "WHO-5 bien-etre moyen",
                 "valeur": who5_display,
-                "seuil": "< 50/100",
+                "seuil": "50",
                 "operateur": "<",
                 "priorite_type": "vigilance",
             },
             {
-                "nom": f"Évolution entre vagues {alerte}",
+                "nom": "Evolution entre vagues",
                 "valeur": delta_display,
-                "seuil": "Δ > 5 = signal",
-                "operateur": "",
-                "priorite_type": "strategique",
+                "seuil": "5",
+                "operateur": ">",
+                "priorite_type": "",
             },
         ]
 
@@ -846,23 +829,17 @@ def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
                     unsafe_allow_html=True,
                 )
 
-    # ══════════════════════════════════════════════════════════
-    # INDICATEURS MÉDECIN DU TRAVAIL
-    # ══════════════════════════════════════════════════════════
     if is_medecin(mode):
-        st.markdown('<div class="section-title">Indicateurs Médecin du Travail</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Indicateurs Medecin du Travail</div>', unsafe_allow_html=True)
 
-        # WHO-5 prévalence détresse
         if "who5_pct" in df.columns:
             pct_detresse = (df["who5_pct"] < 50).sum() / max(len(df), 1) * 100
             who5_detresse = f"{pct_detresse:.1f}%"
         else:
             who5_detresse = "N/A"
 
-        # PSS ≥ 27 stress élevé clinique
         pss_eleve_clinique = f"{pct_eleve:.1f}%" if pct_eleve is not None else "N/A"
 
-        # Q5 : "incapacité a surmonter"
         q5_col = trouver_colonne_pss(df, "Q5")
         if q5_col is not None:
             q5_vals = pd.to_numeric(df[q5_col], errors="coerce")
@@ -871,16 +848,11 @@ def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
         else:
             q5_display = "N/A"
 
-        # Stress × comportements à risque (tabagisme) - CORRIGÉ
         stress_tabac_display = "N/A"
         if "score_stress" in df.columns and "tabagisme" in df.columns:
-            # Nettoyage robuste de la colonne tabagisme
             tabac_clean = df["tabagisme"].astype(str).str.lower().str.strip()
+            tabac_oui = tabac_clean.isin(['oui', 'yes', '1', 'vrai', 'true', 'x'])
             
-            # Détection des réponses positives
-            tabac_oui = tabac_clean.isin(['oui', 'yes', '1', 'vrai', 'true', 'x', '✔', '✓'])
-            
-            # Si aucun "oui" détecté, essayer avec "non" pour inférer
             if tabac_oui.sum() == 0:
                 tabac_non = tabac_clean.isin(['non', 'no', '0', 'faux', 'false', ''])
                 if tabac_non.sum() > 0:
@@ -888,13 +860,11 @@ def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
             
             n_valides = tabac_oui.notna().sum()
             if n_valides > 0:
-                # Stress élevé = score >= 20
                 stress_eleve = df["score_stress"] >= 20
                 stress_tabac = ((stress_eleve) & (tabac_oui)).sum()
                 stress_tabac_pct = (stress_tabac / max(n_valides, 1)) * 100
                 stress_tabac_display = f"{stress_tabac_pct:.1f}%"
 
-        # Évolution longitudinale PSS
         delta_stress_display = "N/A"
         if not evo_df.empty and 'delta_stress' in evo_df.columns:
             delta_stress_moyen = evo_df['delta_stress'].mean()
@@ -902,39 +872,39 @@ def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
 
         indicateurs_med = [
             {
-                "nom": "WHO-5  — prévalence détresse",
+                "nom": "WHO-5 — prevalence detresse",
                 "valeur": who5_detresse,
-                "seuil": "> 15% (alerte OMS)",
+                "seuil": "28%",
                 "operateur": ">",
                 "priorite_type": "risque",
             },
             {
-                "nom": "PSS ≥ 27 — stress élevé clinique",
+                "nom": "PSS  — stress eleve clinique",
                 "valeur": pss_eleve_clinique,
-                "seuil": "Tout cas ≥ 27",
-                "operateur": "≥",
-                "priorite_type": "risque",
-            },
-            {
-                "nom": "Item Q5 PSS (incapcié à surmonter)",
-                "valeur": q5_display,
-                "seuil": "> 30%",
+                "seuil": "27%",
                 "operateur": ">",
                 "priorite_type": "risque",
             },
             {
-                "nom": "Profil stress × comportements à risque",
+                "nom": "Item Q5 PSS (incapcie a surmonter)",
+                "valeur": q5_display,
+                "seuil": "30%",
+                "operateur": ">",
+                "priorite_type": "risque",
+            },
+            {
+                "nom": "Profil stress x comportements a risque",
                 "valeur": stress_tabac_display,
-                "seuil": "> 15%",
+                "seuil": "15%",
                 "operateur": ">",
                 "priorite_type": "vigilance",
             },
             {
                 "nom": "Suivi longitudinal PSS",
                 "valeur": delta_stress_display,
-                "seuil": "Δ > 3 = signal",
-                "operateur": "",
-                "priorite_type": "vigilance",
+                "seuil": "3",
+                "operateur": ">",
+                "priorite_type": "",
             },
         ]
 
@@ -952,8 +922,7 @@ def render_tab_overview(df: pd.DataFrame, mode: str, n_before: int) -> None:
 
 
 def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
-    """Onglet Analyse univariée."""
-    st.markdown('<div class="section-title">Analyse univariée</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Analyse univariee</div>', unsafe_allow_html=True)
 
     VAR_OPTIONS = {}
     for label, col in VARIABLES_SPECIFIQUES + VARIABLES_UNIVARIEES:
@@ -966,7 +935,7 @@ def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
 
     c_sel, _ = st.columns([1, 2])
     with c_sel:
-        sel_label = st.selectbox("Variable à visualiser", list(VAR_OPTIONS.keys()), key="uni_who5")
+        sel_label = st.selectbox("Variable a visualiser", list(VAR_OPTIONS.keys()), key="uni_who5")
     sel_col = VAR_OPTIONS.get(sel_label)
 
     if sel_col and sel_col in df.columns:
@@ -976,26 +945,25 @@ def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
         n_bars   = len(counts_u)
 
         stats_data = [
-            {"Modalité": str(cat), "Effectif": int(eff), "Fréquence": f"{pct:.1f}%"}
+            {"Modalite": str(cat), "Effectif": int(eff), "Frequence": f"{pct:.1f}%"}
             for cat, eff, pct in zip(counts_u.index, counts_u.values, pcts_u.values)
         ]
-        stats_data.append({"Modalité": "TOTAL", "Effectif": int(total_u), "Fréquence": "100%"})
+        stats_data.append({"Modalite": "TOTAL", "Effectif": int(total_u), "Frequence": "100%"})
 
         c_chart, c_table = st.columns([7, 3])
         with c_chart:
             pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
                 "#06B6D4", "#FB923C", "#84CC16", "#EC4899", "#8B5CF6"]
             
-            # Palettes spécifiques
             stress_colors = {
                 "Stress faible":  "#22C55E",
-                "Stress modéré":  "#F59E0B",
-                "Stress élevé":   "#EF4444",
+                "Stress modere":  "#F59E0B",
+                "Stress eleve":   "#EF4444",
             }
             who5_colors = {
-                "Détresse probable": "#EF4444",
-                "Bien-être modéré":  "#F59E0B",
-                "Bien-être élevé":   "#22C55E",
+                "Detresse probable": "#EF4444",
+                "Bien-etre modere":  "#F59E0B",
+                "Bien-etre eleve":   "#22C55E",
             }
 
             fig = go.Figure()
@@ -1031,7 +999,7 @@ def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
                 height=max(300, n_bars * 55 + 120),
                 margin=dict(l=20, r=80, t=60, b=40),
                 title=dict(
-                    text=f"Répartition selon : {sel_label}",
+                    text=f"Repartition selon : {sel_label}",
                     font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
                     x=0.5, xanchor="center",
                 ),
@@ -1042,7 +1010,7 @@ def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
             st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">Statistiques</p>', unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True, height=min(400, 35 * (len(stats_data) + 1)))
 
-            st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">Interpretation</p>', unsafe_allow_html=True)
             modalites = list(counts_u.index)
             if len(modalites) >= 2:
                 m1, m2 = modalites[0], modalites[1]
@@ -1050,19 +1018,18 @@ def render_tab_analyse(df: pd.DataFrame, mode: str) -> None:
                     f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;'
                     f'padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;'
                     f'font-family:\'Plus Jakarta Sans\',sans-serif;">'
-                    f'<p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_label}</b> parmi les {int(total_u)} répondants.</p>'
-                    f'<p style="margin:0 0 8px;">La modalité dominante est <b>« {m1} »</b> avec <b>{pcts_u.iloc[0]:.1f}%</b> des répondants ({int(counts_u.iloc[0])} personne(s)).</p>'
-                    f'<p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{pcts_u.iloc[1]:.1f}%</b> ({int(counts_u.iloc[1])} personne(s)). Au total, <b>{n_bars}</b> modalités.</p>'
+                    f'<p style="margin:0 0 8px;">Ce graphique montre la repartition de <b>{sel_label}</b> parmi les {int(total_u)} repondants.</p>'
+                    f'<p style="margin:0 0 8px;">La modalite dominante est <b>« {m1} »</b> avec <b>{pcts_u.iloc[0]:.1f}%</b> des repondants ({int(counts_u.iloc[0])} personne(s)).</p>'
+                    f'<p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{pcts_u.iloc[1]:.1f}%</b> ({int(counts_u.iloc[1])} personne(s)). Au total, <b>{n_bars}</b> modalites.</p>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
             else:
-                st.caption("Données insuffisantes.")
+                st.caption("Donnees insuffisantes.")
 
 
 def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
-    """Onglet Analyse bivariée."""
-    st.markdown('<div class="section-title">Analyse bivariée</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Analyse bivariee</div>', unsafe_allow_html=True)
 
     VAR_CROISE = {label: col for label, col in VARIABLES_UNIVARIEES if col in df.columns}
 
@@ -1070,19 +1037,19 @@ def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
     if "niveau_stress" in df.columns:
         OUTCOME_MAP["Niveau de stress (PSS-10 )"] = "niveau_stress"
     if "niveau_bien_etre" in df.columns:
-        OUTCOME_MAP["Niveau de bien-être (WHO-5)"] = "niveau_bien_etre"
+        OUTCOME_MAP["Niveau de bien-etre (WHO-5)"] = "niveau_bien_etre"
 
     OUTCOME_OPTIONS = {k: v for k, v in OUTCOME_MAP.items() if v in df.columns}
 
     if not VAR_CROISE or not OUTCOME_OPTIONS:
-        st.info("Variables insuffisantes pour l'analyse bivariée.")
+        st.info("Variables insuffisantes pour l'analyse bivariee.")
         return
 
     cx1, cx2 = st.columns(2)
     with cx1:
-        sel_var = st.selectbox("Variable démographique", list(VAR_CROISE.keys()), key="bivar_var")
+        sel_var = st.selectbox("Variable demographique", list(VAR_CROISE.keys()), key="bivar_var")
     with cx2:
-        sel_outcome = st.selectbox("Variable de résultat", list(OUTCOME_OPTIONS.keys()), key="bivar_outcome")
+        sel_outcome = st.selectbox("Variable de resultat", list(OUTCOME_OPTIONS.keys()), key="bivar_outcome")
 
     var_col = VAR_CROISE.get(sel_var)
     out_col = OUTCOME_OPTIONS.get(sel_outcome)
@@ -1097,11 +1064,11 @@ def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
             with c_chart:
                 colors_map = {
                     "Stress faible":  "#22C55E",
-                    "Stress modéré":  "#F59E0B",
-                    "Stress élevé":   "#EF4444",
-                    "Détresse probable": "#EF4444",
-                    "Bien-être modéré":  "#F59E0B",
-                    "Bien-être élevé":   "#22C55E",
+                    "Stress modere":  "#F59E0B",
+                    "Stress eleve":   "#EF4444",
+                    "Detresse probable": "#EF4444",
+                    "Bien-etre modere":  "#F59E0B",
+                    "Bien-etre eleve":   "#22C55E",
                 }
                 gen_pal = ["#38A3E8", "#F97316", "#22C55E", "#EF4444", "#A78BFA",
                         "#06B6D4", "#FB923C", "#84CC16"]
@@ -1152,7 +1119,7 @@ def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
                 st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">Tableau de distribution (%)</p>', unsafe_allow_html=True)
                 st.dataframe(pct.round(1).style.format("{:.1f}%"), use_container_width=True)
 
-                st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">Interpretation</p>', unsafe_allow_html=True)
                 lignes, colonnes = list(pct.index), list(pct.columns)
                 if len(lignes) >= 2 and len(colonnes) >= 1:
                     l1, l2 = lignes[0], lignes[1]
@@ -1162,18 +1129,18 @@ def render_tab_croisement(df: pd.DataFrame, mode: str) -> None:
                         f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;'
                         f'padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;'
                         f'font-family:\'Plus Jakarta Sans\',sans-serif;">'
-                        f'<p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_outcome}</b> selon <b>{sel_var}</b>.</p>'
+                        f'<p style="margin:0 0 8px;">Ce graphique montre la repartition de <b>{sel_outcome}</b> selon <b>{sel_var}</b>.</p>'
                         f'<p style="margin:0 0 8px;">Parmi les <b>« {l1} »</b> : {", ".join(parts_l1)}.</p>'
                         f'<p style="margin:0;">Parmi les <b>« {l2} »</b> : {", ".join(parts_l2)}.</p>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
                 else:
-                    st.caption("Données insuffisantes.")
+                    st.caption("Donnees insuffisantes.")
 
 
 # =============================================================================
-# POINT D'ENTRÉE STREAMLIT
+# POINT D'ENTREE STREAMLIT
 # =============================================================================
 
 def main():
@@ -1192,9 +1159,6 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # ════════════════════════════════════════════════════════════
-    # TOPBAR
-    # ════════════════════════════════════════════════════════════
     col_top, col_switch, col_back = st.columns([5, 3, 1])
 
     with col_top:
@@ -1211,7 +1175,7 @@ def main():
             f'<div><div style="font-size:16px;font-weight:700;color:#1e293b;'
             f'font-family:\'Plus Jakarta Sans\',sans-serif;">{PAGE_TITLE}</div>'
             f'<div style="font-size:11px;color:#64748b;margin-top:1px;'
-            f'font-family:\'Plus Jakarta Sans\',sans-serif;">Évaluation du bien-être et du stress perçu</div>'
+            f'font-family:\'Plus Jakarta Sans\',sans-serif;">Evaluation du bien-etre et du stress percu</div>'
             f'</div></div>',
             unsafe_allow_html=True,
         )
@@ -1226,9 +1190,6 @@ def main():
         if st.button("← Accueil", key=f"back_home_{PAGE_KEY}", use_container_width=True):
             st.switch_page("app.py")
 
-    # ════════════════════════════════════════════════════════════
-    # UPLOAD
-    # ════════════════════════════════════════════════════════════
     uploaded_file = st.file_uploader(
         "Charger un fichier Excel ou CSV",
         type=["xlsx", "xls", "csv"],
@@ -1238,13 +1199,13 @@ def main():
         st.session_state[f"_file_bytes_{PAGE_KEY}"] = uploaded_file.read()
         st.session_state[f"_file_name_{PAGE_KEY}"]  = uploaded_file.name
     if f"_file_bytes_{PAGE_KEY}" not in st.session_state:
-        st.info("Veuillez charger un fichier de données pour démarrer l'analyse.")
+        st.info("Veuillez charger un fichier de donnees pour demarrer l'analyse.")
         st.stop()
 
     file_bytes = st.session_state[f"_file_bytes_{PAGE_KEY}"]
     file_name  = st.session_state[f"_file_name_{PAGE_KEY}"]
 
-    with st.spinner("Chargement et traitement des données…"):
+    with st.spinner("Chargement et traitement des donnees…"):
         df_raw = load_data_from_bytes(file_bytes, file_name)
         n_before = len(df_raw)
         df_clean, cleaning_log = clean_common_variables(df_raw)
@@ -1252,44 +1213,26 @@ def main():
     with st.expander("Journal de nettoyage", expanded=False):
         st.text(cleaning_log)
         st.text(f"Items PSS-10 : {sum(1 for k in PSS_ITEMS if trouver_colonne_pss(df_clean, k) is not None)}/10")
-        st.text(f"Items WHO-5 : {detect_who5_columns(df_clean)}/5")
-        st.write(f"Avant: **{n_before}** — Après: **{len(df_clean)}**")
+        st.write(f"Avant: **{n_before}** — Apres: **{len(df_clean)}**")
 
     if df_clean.empty:
-        st.error("Aucune donnée exploitable.")
+        st.error("Aucune donnee exploitable.")
         st.stop()
 
-    # ════════════════════════════════════════════════════════════
-    # VÉRIFICATION PSS-10
-    # ════════════════════════════════════════════════════════════
     pss_trouvees = sum(1 for k in PSS_ITEMS if trouver_colonne_pss(df_clean, k) is not None)
     if pss_trouvees < 8:
-        st.error(f"❌ **Fichier non reconnu** — Seulement {pss_trouvees}/10 items PSS-10 détectés.")
+        st.error(f"ERREUR - Fichier non reconnu — Seulement {pss_trouvees}/10 items PSS-10 detectes.")
         st.stop()
-        
-        # Vérification WHO-5
-        who5_mapping = detect_who5_columns(df_clean)
-        if who5_mapping:
-            pass
-        else:
-            st.markdown("**WHO-5 :** non détecté")
 
-    # ════════════════════════════════════════════════════════════
-    # CALCULS PSS-10 ET WHO-5
-    # ════════════════════════════════════════════════════════════
     df_clean = compute_pss_scores(df_clean)
-    df_clean = compute_who5_scores(df_clean)  # ← AJOUT CRITIQUE
+    df_clean = compute_who5_scores(df_clean)
 
-    # ════════════════════════════════════════════════════════════
-    # ONGLETS
-    # ════════════════════════════════════════════════════════════
     if is_medecin(current_mode):
-        tabs = st.tabs(["Vue d'ensemble", "Analyse univariée", "Analyse bivariée"])
+        tabs = st.tabs(["Vue d'ensemble", "Analyse univariee", "Analyse bivariee"])
     else:
-        tabs = st.tabs(["Vue d'ensemble", "Analyse univariée"])
+        tabs = st.tabs(["Vue d'ensemble", "Analyse univariee"])
 
     with tabs[0]:
-        # ── Filtres ────────────────────────────────────────────
         FILTER_VARS = [
             ("Genre", "genre"),
             ("Situation matrimoniale", "situation_matrimoniale"),
@@ -1312,27 +1255,27 @@ def main():
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
         if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
-            num_vars.append(("Âge", "age"))
+            num_vars.append(("Age", "age"))
 
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
 
             with fc1:
                 cat_labels    = ["— Aucun —"] + [l for l, _ in cat_vars]
-                sel_cat_label = st.selectbox("Variable (catégorielle)", cat_labels, key="who5_filtre_cat")
+                sel_cat_label = st.selectbox("Variable (categorielle)", cat_labels, key="who5_filtre_cat")
 
             with fc2:
                 if sel_cat_label != "— Aucun —":
                     cat_col      = dict(cat_vars)[sel_cat_label]
                     modalites    = sorted(df_clean[cat_col].dropna().astype(str).unique().tolist())
-                    sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalites, key="who5_filtre_mod")
+                    sel_modalite = st.selectbox("Modalite", ["Toutes"] + modalites, key="who5_filtre_mod")
                 else:
                     sel_modalite = "Toutes"
-                    st.selectbox("Modalité", ["Toutes"], disabled=True)
+                    st.selectbox("Modalite", ["Toutes"], disabled=True)
 
             with fc3:
                 num_labels    = ["— Aucun —"] + [l for l, _ in num_vars]
-                sel_num_label = st.selectbox("Variable (numérique)", num_labels, key="who5_filtre_num")
+                sel_num_label = st.selectbox("Variable (numerique)", num_labels, key="who5_filtre_num")
                 if sel_num_label != "— Aucun —":
                     num_col = dict(num_vars)[sel_num_label]
                     vals    = pd.to_numeric(df_clean[num_col], errors="coerce").dropna()
@@ -1349,13 +1292,12 @@ def main():
 
             with fc4:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Réinitialiser", key="who5_reset_filtres", use_container_width=True):
+                if st.button("Reinitialiser", key="who5_reset_filtres", use_container_width=True):
                     for k in ["who5_filtre_cat", "who5_filtre_mod", "who5_filtre_num", "who5_filtre_range"]:
                         if k in st.session_state:
                             del st.session_state[k]
                     st.rerun()
 
-        # ── Appliquer les filtres ───────────────────────────────
         mask = pd.Series(True, index=df_clean.index)
         if sel_cat_label != "— Aucun —" and sel_modalite != "Toutes":
             cat_col = dict(cat_vars)[sel_cat_label]
@@ -1367,7 +1309,7 @@ def main():
 
         df_filtered = df_clean[mask].copy()
         if len(df_filtered) == 0:
-            st.warning("Aucune donnée ne correspond aux filtres sélectionnés.")
+            st.warning("Aucune donnee ne correspond aux filtres selectionnes.")
             st.stop()
 
         render_tab_overview(df_filtered, current_mode, n_before)
@@ -1379,9 +1321,6 @@ def main():
         with tabs[2]:
             render_tab_croisement(df_clean, current_mode)
 
-    # ════════════════════════════════════════════════════════════
-    # FOOTER
-    # ════════════════════════════════════════════════════════════
     st.markdown("---")
     st.markdown(
         f'<p style="text-align:center;color:#9CA3AF;font-size:0.8rem;'

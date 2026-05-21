@@ -285,7 +285,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
     n_after_drop = len(cleaned_df)
     n_dropped = n_before_drop - n_after_drop
     if n_dropped > 0: ops.append(f"{n_dropped} observation(s) supprimée(s) — {n_after_drop} restantes")
-    else: ops.append(f"✅ Aucune observation avec valeurs manquantes — {n_after_drop} observations conservées")
+    else: ops.append(f"Aucune observation avec valeurs manquantes — {n_after_drop} observations conservées")
 
     cleaning_log = "Nettoyage appliqué:\n- " + "\n- ".join(ops) if ops else "Aucune opération appliquée."
     return cleaned_df, cleaning_log
@@ -507,25 +507,125 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
 
 
 # =============================================================================
-# FONCTIONS INDICATEURS
+# FONCTIONS INDICATEURS AVEC COMPARAISON AUTOMATIQUE
 # =============================================================================
 
 def get_priority_info(priorite_type: str) -> tuple:
-    if priorite_type == "risque": return "#EF4444","Risque prioritaire","#EF4444"
-    elif priorite_type == "levier": return "#22C55E","Levier performance","#22C55E"
-    elif priorite_type == "vigilance": return "#F59E0B","Vigilance","#F59E0B"
-    elif priorite_type == "strategique": return "#3B82F6","Stratégique","#3B82F6"
-    elif priorite_type == "protecteur": return "#22C55E","Levier protecteur","#22C55E"
-    return "#6B7280","","#6B7280"
+    """
+    Retourne les informations de style selon le type de priorite
+    
+    Types disponibles:
+    - "risque": couleur rouge, alerte prioritaire
+    - "vigilance": couleur orange, a surveiller
+    - "levier": couleur verte, performance OK
+    - "strategique": couleur bleue, suivi strategique
+    """
+    if priorite_type == "risque":
+        return "#EF4444", "Risque prioritaire", "#EF4444"
+    elif priorite_type == "levier":
+        return "#22C55E", "Levier performance", "#22C55E"
+    elif priorite_type == "vigilance":
+        return "#F59E0B", "Vigilance", "#F59E0B"
+    elif priorite_type == "strategique":
+        return "#3B82F6", "Suivi strategique", "#3B82F6"
+    elif priorite_type == "protecteur":
+        return "#22C55E", "Levier protecteur", "#22C55E"
+    return "#6B7280", "Information", "#6B7280"
 
 
-def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type: str) -> str:
+def comparer_valeur_seuil(valeur, seuil, operateur: str) -> bool:
+    """
+    Compare une valeur avec un seuil selon l'operateur
+    Retourne True si la condition est vraie (indique un danger/alerte)
+    """
+    try:
+        # Nettoyer la valeur (enlever le % si present)
+        if isinstance(valeur, str):
+            valeur_clean = valeur.replace('%', '').replace(',', '.').strip()
+            val_num = float(valeur_clean)
+        else:
+            val_num = float(valeur)
+        
+        # Nettoyer le seuil
+        if isinstance(seuil, str):
+            seuil_clean = seuil.replace('%', '').replace(',', '.').strip()
+            seuil_num = float(seuil_clean)
+        else:
+            seuil_num = float(seuil)
+        
+        # Comparaison selon l'operateur
+        if operateur == ">":
+            return val_num > seuil_num
+        elif operateur == ">=":
+            return val_num >= seuil_num
+        elif operateur == "<":
+            return val_num < seuil_num
+        elif operateur == "<=":
+            return val_num <= seuil_num
+        elif operateur == "==" or operateur == "=":
+            return val_num == seuil_num
+        else:
+            # Par defaut, on considere que depasser le seuil est l'alerte
+            return val_num > seuil_num
+    except (ValueError, TypeError):
+        return False
+
+
+def get_dynamic_priority(valeur, seuil: str, operateur: str, priorite_alerte: str) -> tuple:
+    """
+    Determine dynamiquement la priorite a afficher en comparant la valeur avec le seuil
+    
+    Regles:
+    - Si la valeur DEPASSE le seuil (comparaison selon operateur) -> on applique priorite_alerte (risque/vigilance)
+    - Sinon -> c'est "levier performance" (vert) car c'est bon
+    """
+    # Verifier si le seuil est depasse
+    seuil_depasse = comparer_valeur_seuil(valeur, seuil, operateur)
+    
+    if seuil_depasse:
+        return get_priority_info(priorite_alerte)
+    else:
+        return get_priority_info("levier")
+
+
+def render_indicator_card(nom: str, valeur, seuil: str = None, operateur: str = "", priorite_type: str = "levier") -> str:
+    """
+    Affiche une carte d'indicateur avec style determine dynamiquement
+    
+    Parametres:
+    - nom: Nom de l'indicateur
+    - valeur: Valeur a afficher (sera convertie en str)
+    - seuil: Valeur seuil (optionnel)
+    - operateur: Operateur de comparaison (">", "<", ">=", "<=")
+    - priorite_type: Priorite a afficher SI le seuil est depasse
+    """
     if valeur is None:
-        return '<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:12px;padding:16px;text-align:center;min-height:170px;display:flex;align-items:center;justify-content:center;"><p style="color:#94A3B8;font-size:0.85rem;">Données<br>insuffisantes</p></div>'
-    bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
-    valeur_color = bordure_color; priorite_bg = bordure_color + "18"
-    seuil_str = f"Seuil {operateur} {seuil}" if seuil is not None else ""
-    valeur_str = str(valeur); taille_police = "36px" if len(valeur_str) <= 10 else "22px"
+        return '<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:12px;padding:16px;text-align:center;min-height:170px;display:flex;align-items:center;justify-content:center;"><p style="color:#94A3B8;font-size:0.85rem;">Donnees<br>insuffisantes</p></div>'
+    
+    # Determiner dynamiquement la priorite a afficher
+    if seuil is not None and operateur:
+        bordure_color, priorite_texte, priorite_color = get_dynamic_priority(
+            valeur, seuil, operateur, priorite_type
+        )
+    else:
+        # Pas de seuil defini -> on affiche la priorite statique
+        bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+    
+    valeur_color = bordure_color
+    priorite_bg = bordure_color + "18"
+    
+    # Construction du texte du seuil
+    seuil_str = ""
+    if seuil is not None:
+        if operateur:
+            seuil_str = f"Seuil {operateur} {seuil}"
+        else:
+            seuil_str = f"Seuil : {seuil}"
+    
+    # Taille adaptative
+    valeur_str = str(valeur)
+    taille_police = "36px" if len(valeur_str) <= 10 else "22px"
+    
     return f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;padding:20px 14px 16px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,0.06);border-top:4px solid {bordure_color};min-height:190px;display:flex;flex-direction:column;justify-content:space-between;"><div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:14px;font-weight:700;color:#1E293B;margin:0;line-height:1.3;">{nom}</p></div><div><p style="font-family:\'Plus Jakarta Sans\',sans-serif;font-size:{taille_police};font-weight:800;color:{valeur_color};margin:8px 0;line-height:1;">{valeur}</p><span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:10px;font-weight:600;color:{priorite_color};background:{priorite_bg};margin:8px 0 4px;">{priorite_texte}</span><p style="font-size:9px;color:#94A3B8;margin:0 0 6px;">{seuil_str}</p></div></div>'
 
 
@@ -556,7 +656,7 @@ def main():
     # TOPBAR
     col_top, col_switch, col_back = st.columns([5,3,1])
     with col_top:
-        st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:white;border-radius:12px;padding:14px 24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(30,110,79,0.08);border:1px solid #e8edf5;"><div style="width:38px;height:38px;background:linear-gradient(135deg,#1e6e4f,#3aaa7a);border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-brain" style="color:white;font-size:15px;"></i></div><div><div style="font-size:16px;font-weight:700;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;">Modèle de Karasek — Demande–Contrôle–Soutien</div><div style="font-size:11px;color:#64748b;margin-top:1px;font-family:'Plus Jakarta Sans',sans-serif;">Analyse des risques psychosociaux au travail (Job Strain & Iso-Strain)</div></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="display:flex;align-items:center;gap:12px;background:white;border-radius:12px;padding:14px 24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(30,110,79,0.08);border:1px solid #e8edf5;"><div style="width:38px;height:38px;background:linear-gradient(135deg,#1e6e4f,#3aaa7a);border-radius:10px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-brain" style="color:white;font-size:15px;"></i></div><div><div style="font-size:16px;font-weight:700;color:#1e293b;font-family:'Plus Jakarta Sans',sans-serif;">Modele de Karasek — Demande–Controle–Soutien</div><div style="font-size:11px;color:#64748b;margin-top:1px;font-family:'Plus Jakarta Sans',sans-serif;">Analyse des risques psychosociaux au travail (Job Strain et Iso-Strain)</div></div></div>""", unsafe_allow_html=True)
     with col_switch:
         st.markdown('<div style="margin-top:4px;">', unsafe_allow_html=True)
         current_mode = render_mode_switcher(key=PAGE_KEY, position="topbar")
@@ -570,62 +670,55 @@ def main():
         st.session_state[f"_file_bytes_{PAGE_KEY}"] = uploaded_file.read()
         st.session_state[f"_file_name_{PAGE_KEY}"] = uploaded_file.name
     if f"_file_bytes_{PAGE_KEY}" not in st.session_state:
-        st.info("Veuillez charger un fichier de données pour démarrer l'analyse."); st.stop()
+        st.info("Veuillez charger un fichier de donnees pour demarrer l'analyse."); st.stop()
     
     file_bytes = st.session_state[f"_file_bytes_{PAGE_KEY}"]
     file_name = st.session_state[f"_file_name_{PAGE_KEY}"]
     
-    with st.spinner("Chargement et traitement des données…"):
+    with st.spinner("Chargement et traitement des donnees…"):
         df_raw = load_data_from_bytes(file_bytes, file_name)
         n_before = len(df_raw)
         df_clean, cleaning_log = clean_common_variables(df_raw)
         
-        
     with st.expander("Journal de nettoyage", expanded=False):
         st.text(cleaning_log)
         st.text(f"Items Karasek : {sum(1 for item in KARASEK_ITEMS if trouver_colonne_karasek(df_clean, item) is not None)}/{len(KARASEK_ITEMS)}")
-        st.write(f"Avant: **{n_before}** — Après: **{len(df_clean)}**")
+        st.write(f"Avant: **{n_before}** — Apres: **{len(df_clean)}**")
     
-    if df_clean.empty: st.error("Aucune donnée exploitable."); st.stop()
+    if df_clean.empty: st.error("Aucune donnee exploitable."); st.stop()
     
-    # ════════════════════════════════════════════════════════════
-    # VÉRIFICATION KARASEK
-    # ════════════════════════════════════════════════════════════
+    # VERIFICATION KARASEK
     karasek_trouvees = sum(1 for item in KARASEK_ITEMS if trouver_colonne_karasek(df_clean, item) is not None)
     if karasek_trouvees < 40:
-        st.error(f"""❌ **Fichier non reconnu comme un questionnaire Karasek**
-        Seulement **{karasek_trouvees}/{len(KARASEK_ITEMS)}** items détectés.
-        **Solution :** Chargez ce fichier dans le module approprié.""")
+        st.error(f"""ERREUR - Fichier non reconnu comme un questionnaire Karasek
+        Seulement **{karasek_trouvees}/{len(KARASEK_ITEMS)}** items detectes.
+        Solution : Chargez ce fichier dans le module approprie.""")
         st.stop()
-    # Scoring Karasek (formules karasek_kpi_formulas.py)
+    
+    # Scoring Karasek
     df_clean = compute_all_scores(df_clean)
     df_clean = classify_karasek(df_clean)
     
-    # ── ONGLETS ─────────────────────────────────────────────────────────────
+    # ONGLETS
     if is_medecin(current_mode):
-        onglet1, onglet2, onglet3 = st.tabs(["Vue d'ensemble", "Analyses univariées", "Analyse bivariée"])
+        onglet1, onglet2, onglet3 = st.tabs(["Vue d'ensemble", "Analyses univariees", "Analyse bivariee"])
     else:
-        onglet1, onglet2 = st.tabs(["Vue d'ensemble", "Analyses univariées"])
+        onglet1, onglet2 = st.tabs(["Vue d'ensemble", "Analyses univariees"])
         onglet3 = None
     
-    # ╔══════════════════════════════════════════════════════════════╗
-    # ║  ONGLET 1 : VUE D'ENSEMBLE                                  ║
-    # ╚══════════════════════════════════════════════════════════════╝
+    # ONGLET 1 : VUE D'ENSEMBLE
     with onglet1:
-        # ════════════════════════════════════════════════════════════
-        # FILTRES (spécifiques à l'onglet 1)
-        # ════════════════════════════════════════════════════════════
         FILTER_VARS = [
             ("Genre", "genre"),
             ("Situation matrimoniale", "situation_matrimoniale"),
-            ("Tranche d'âge", "Tranche_dage"),
-            ("Tranche ancienneté", "Tranche_anciennete"),
-            ("Catégorie IMC", "Categorie_IMC"),
+            ("Tranche d'age", "Tranche_dage"),
+            ("Tranche anciennete", "Tranche_anciennete"),
+            ("Categorie IMC", "Categorie_IMC"),
             ("IMC (normal/surpoids)", "IMC_binaire"),
             ("Direction", "direction"),
             ("Fonction", "fonction"),
             ("Service", "service"),
-            ("Département", "departement"),
+            ("Departement", "departement"),
             ("Tabagisme", "tabagisme"),
             ("Consommation d'alcool", "consommation_alcool"),
             ("Maladie chronique", "maladie_chronique"),
@@ -634,33 +727,31 @@ def main():
             ("Pratique sportive", "pratique_sport"),
         ]
         
-        # Séparer variables catégorielles et numériques
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
         
-        # Ajouter l'âge numérique s'il existe
         if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
-            num_vars.append(("Âge", "age"))
-                
+            num_vars.append(("Age", "age"))
+        
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
             
             with fc1:
                 cat_labels = ["— Aucun —"] + [l for l, _ in cat_vars]
-                sel_cat_label = st.selectbox("Variable (catégorielle)", cat_labels, key="kar_filtre_cat")
+                sel_cat_label = st.selectbox("Variable (categorielle)", cat_labels, key="kar_filtre_cat")
             
             with fc2:
                 if sel_cat_label != "— Aucun —":
                     cat_col = dict(cat_vars)[sel_cat_label]
                     modalites = sorted(df_clean[cat_col].dropna().astype(str).unique().tolist())
-                    sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalites, key="kar_filtre_mod")
+                    sel_modalite = st.selectbox("Modalite", ["Toutes"] + modalites, key="kar_filtre_mod")
                 else:
                     sel_modalite = "Toutes"
-                    st.selectbox("Modalité", ["Toutes"], disabled=True)
+                    st.selectbox("Modalite", ["Toutes"], disabled=True)
             
             with fc3:
                 num_labels = ["— Aucun —"] + [l for l, _ in num_vars]
-                sel_num_label = st.selectbox("Variable (numérique)", num_labels, key="kar_filtre_num")
+                sel_num_label = st.selectbox("Variable (numerique)", num_labels, key="kar_filtre_num")
                 
                 if sel_num_label != "— Aucun —":
                     num_col = dict(num_vars)[sel_num_label]
@@ -678,13 +769,12 @@ def main():
             
             with fc4:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Réinitialiser", key="kar_reset_filtres", use_container_width=True):
+                if st.button("Reinitialiser", key="kar_reset_filtres", use_container_width=True):
                     for k in ["kar_filtre_cat", "kar_filtre_mod", "kar_filtre_num", "kar_filtre_range"]:
                         if k in st.session_state:
                             del st.session_state[k]
                     st.rerun()
         
-        # Appliquer les filtres UNIQUEMENT pour l'onglet 1
         mask = pd.Series(True, index=df_clean.index)
         
         if sel_cat_label != "— Aucun —" and sel_modalite != "Toutes":
@@ -699,13 +789,10 @@ def main():
         df_filtered = df_clean[mask].copy()
         
         if len(df_filtered) == 0:
-            st.warning("Aucune donnée ne correspond aux filtres sélectionnés.")
+            st.warning("Aucune donnee ne correspond aux filtres selectionnes.")
             st.stop()
         
-        # ════════════════════════════════════════════════════════════
-        # CONTENU DE L'ONGLET 1 (utilise df_filtered)
-        # ════════════════════════════════════════════════════════════
-        st.markdown('<div class="section-title">Données Générales de la Population</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Donnees Generales de la Population</div>', unsafe_allow_html=True)
         render_kpi_row(df_filtered, n_before_cleaning=n_before)
         
         n = len(df_filtered)
@@ -726,19 +813,24 @@ def main():
             pct_iso = round((nb_iso/n)*100, 1) if n > 0 else 0
             
             indicateurs_rh = [
-                {"nom": "Collaborateurs en Job Strain", "valeur": f"{pct_job_strain:.1f}%", "seuil": "> 25%", "priorite_type": "risque"},
-                {"nom": "Score latitude décisionnelle", "valeur": f"{lat_moyen:.1f}" if lat_moyen else "N/A", "seuil": "< 60/120", "priorite_type": "levier"},
-                {"nom": "Score demandes psychologiques", "valeur": f"{dem_moyen:.1f}" if dem_moyen else "N/A", "seuil": "> 22,5/36", "priorite_type": "risque"},
-                {"nom": "Score soutien social", "valeur": f"{ss_moyen:.1f}" if ss_moyen else "N/A", "seuil": "< 20/32", "priorite_type": "vigilance"},
-                {"nom": "Iso-Strain", "valeur": f"{pct_iso:.1f}%", "seuil": "> 10%", "priorite_type": "risque"},
+                {"nom": "Collaborateurs en Job Strain", "valeur": f"{pct_job_strain:.1f}%", "seuil": "25%", "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Score latitude decisionnelle", "valeur": f"{lat_moyen:.1f}" if lat_moyen else "N/A", "seuil": "70", "operateur": "<", "priorite_type": "risque"},
+                {"nom": "Score demandes psychologiques", "valeur": f"{dem_moyen:.1f}" if dem_moyen else "N/A", "seuil": "40", "operateur": ">", "priorite_type": "vigilance"},
+                {"nom": "Score soutien social", "valeur": f"{ss_moyen:.1f}" if ss_moyen else "N/A", "seuil": "20", "operateur": ">", "priorite_type": "vigilance"},
+                {"nom": "Iso-Strain", "valeur": f"{pct_iso:.1f}%", "seuil": "10%", "operateur": ">", "priorite_type": "risque"},
             ]
             cols = st.columns(5)
             for i, indic in enumerate(indicateurs_rh):
-                with cols[i]: st.markdown(render_indicator_card(indic["nom"], indic["valeur"], indic["seuil"], "", indic["priorite_type"]), unsafe_allow_html=True)
+                with cols[i]: 
+                    st.markdown(render_indicator_card(
+                        indic["nom"], indic["valeur"], 
+                        indic.get("seuil"), indic.get("operateur", ""), 
+                        indic["priorite_type"]
+                    ), unsafe_allow_html=True)
         
-        # Indicateurs Médecin
+        # Indicateurs Medecin
         if is_medecin(current_mode):
-            st.markdown('<div class="section-title">Indicateurs Médecin du Travail</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">Indicateurs Medecin du Travail</div>', unsafe_allow_html=True)
             
             nb_iso = int((df_filtered.get('Iso_strain_theoretical') == 'Présent').sum()) if 'Iso_strain_theoretical' in df_filtered.columns else 0
             pct_iso = round((nb_iso/n)*100, 1) if n > 0 else 0
@@ -748,27 +840,31 @@ def main():
             lat_moyen = round(df_filtered['Lat_score'].mean(), 1) if 'Lat_score' in df_filtered.columns else None
             
             indicateurs_med = [
-                {"nom": "Prévalence Iso-Strain", "valeur": f"{pct_iso:.1f}%", "seuil": "> 10%", "priorite_type": "risque"},
-                {"nom": "Soutien social superviseur", "valeur": f"{sup_moyen:.1f}/4" if sup_moyen else "N/A", "seuil": "< 2,3/4", "priorite_type": "vigilance"},
-                {"nom": "Demandes psychologiques", "valeur": f"{dem_moyen:.1f}" if dem_moyen else "N/A", "seuil": "> 22,5/36", "priorite_type": "risque"},
-                {"nom": "Latitude décisionnelle", "valeur": f"{lat_moyen:.1f}" if lat_moyen else "N/A", "seuil": "< 60/120", "priorite_type": "vigilance"},
-                {"nom": "Tendu (Job Strain)", "valeur": f"{round((df_filtered.get(quad_col)=='Tendu').sum()/n*100,1):.1f}%" if quad_col in df_filtered.columns else "N/A", "seuil": "> 25%", "priorite_type": "risque"},
+                {"nom": "Prevalence Iso-Strain", "valeur": f"{pct_iso:.1f}%", "seuil": "10%", "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Soutien social superviseur", "valeur": f"{sup_moyen:.1f}/4" if sup_moyen else "N/A", "seuil": "2.3", "operateur": "<", "priorite_type": "vigilance"},
+                {"nom": "Demandes psychologiques", "valeur": f"{dem_moyen:.1f}" if dem_moyen else "N/A", "seuil": "22.5", "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Latitude decisionnelle", "valeur": f"{lat_moyen:.1f}" if lat_moyen else "N/A", "seuil": "60", "operateur": "<", "priorite_type": "vigilance"},
+                {"nom": "Tendu (Job Strain)", "valeur": f"{round((df_filtered.get(quad_col)=='Tendu').sum()/n*100,1):.1f}%" if quad_col in df_filtered.columns else "N/A", "seuil": "25%", "operateur": ">", "priorite_type": "risque"},
             ]
             cols = st.columns(5)
             for i, indic in enumerate(indicateurs_med):
-                with cols[i]: st.markdown(render_indicator_card(indic["nom"], indic["valeur"], indic["seuil"], "", indic["priorite_type"]), unsafe_allow_html=True)    
-    # ╔══════════════════════════════════════════════════════════════╗
-    # ║  ONGLET 2 : ANALYSES UNIVARIÉES                             ║
-    # ╚══════════════════════════════════════════════════════════════╝
+                with cols[i]: 
+                    st.markdown(render_indicator_card(
+                        indic["nom"], indic["valeur"], 
+                        indic.get("seuil"), indic.get("operateur", ""), 
+                        indic["priorite_type"]
+                    ), unsafe_allow_html=True)
+    
+    # ONGLET 2 : ANALYSES UNIVARIEES
     with onglet2:
-        st.markdown('<div class="section-title">Analyses univariées</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Analyses univariees</div>', unsafe_allow_html=True)
         VAR_OPTIONS = {}
         for label, col in [
             ("Quadrant Karasek","Karasek_quadrant_theoretical"),("Job Strain","Job_strain_theoretical"),("Iso Strain","Iso_strain_theoretical"),
             ("Genre","genre"),("Situation matrimoniale","situation_matrimoniale"),
-            ("Tranche d'âge","Tranche_dage"),("Tranche ancienneté","Tranche_anciennete"),
-            ("Catégorie IMC","Categorie_IMC"),("IMC (normal/surpoids)","IMC_binaire"),
-            ("Direction","direction"),("Fonction","fonction"),("Service","service"),("Département","departement"),
+            ("Tranche d'age","Tranche_dage"),("Tranche anciennete","Tranche_anciennete"),
+            ("Categorie IMC","Categorie_IMC"),("IMC (normal/surpoids)","IMC_binaire"),
+            ("Direction","direction"),("Fonction","fonction"),("Service","service"),("Departement","departement"),
             ("Tabagisme","tabagisme"),("Consommation d'alcool","consommation_alcool"),
             ("Maladie chronique","maladie_chronique"),("Handicap physique","handicap_physique"),
             ("Suivi psychologique","suivi_psychologique"),("Pratique sportive","pratique_sport"),
@@ -778,15 +874,15 @@ def main():
         if not VAR_OPTIONS: st.info("Aucune variable disponible.")
         else:
             c_sel, _ = st.columns([1,2])
-            with c_sel: sel_label = st.selectbox("Variable à visualiser", list(VAR_OPTIONS.keys()), key="uni_karasek")
+            with c_sel: sel_label = st.selectbox("Variable a visualiser", list(VAR_OPTIONS.keys()), key="uni_karasek")
             sel_col = VAR_OPTIONS.get(sel_label)
             if sel_col and sel_col in df_clean.columns:
                 counts_u = df_clean[sel_col].value_counts(); total_u = counts_u.sum()
                 pcts_u = (counts_u/total_u*100).round(1); n_bars = len(counts_u)
                 stats_data = []
                 for cat,eff,pct in zip(counts_u.index, counts_u.values, pcts_u.values):
-                    stats_data.append({"Modalité":str(cat),"Effectif":int(eff),"Fréquence":f"{pct:.1f}%"})
-                stats_data.append({"Modalité":"TOTAL","Effectif":int(total_u),"Fréquence":"100%"})
+                    stats_data.append({"Modalite":str(cat),"Effectif":int(eff),"Frequence":f"{pct:.1f}%"})
+                stats_data.append({"Modalite":"TOTAL","Effectif":int(total_u),"Frequence":"100%"})
                 
                 c_chart, c_table = st.columns([7,3])
                 with c_chart:
@@ -807,31 +903,28 @@ def main():
                         xaxis=dict(range=[0,max(pcts_u.values)*1.5],title_text="Pourcentage (%)",showgrid=True,gridcolor="#EDF5FD",gridwidth=1,showline=True,linecolor="#D6E8F7",zeroline=False,tickfont=dict(color="#6B88A8",size=11)),
                         yaxis=dict(showgrid=False,showline=False,zeroline=False,tickfont=dict(color="#0F2340",size=11)),
                         height=max(300,n_bars*55+120),margin=dict(l=20,r=80,t=60,b=40),
-                        title=dict(text=f"Répartition selon : {sel_label}",font=dict(size=14,color="#0F2340",family="Plus Jakarta Sans"),x=0.5,xanchor="center"))
+                        title=dict(text=f"Repartition selon : {sel_label}",font=dict(size=14,color="#0F2340",family="Plus Jakarta Sans"),x=0.5,xanchor="center"))
                     st.plotly_chart(fig, use_container_width=True, key="uni_karasek_plotly")
                 
                 with c_table:
                     st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:0.8rem;">Statistiques</p>', unsafe_allow_html=True)
                     stats_df = pd.DataFrame(stats_data)
                     st.dataframe(stats_df, use_container_width=True, hide_index=True, height=min(400,35*(len(stats_data)+1)))
-                    st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
+                    st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">Interpretation</p>', unsafe_allow_html=True)
                     modalites = list(counts_u.index)
                     if len(modalites) >= 2:
                         m1,m2 = modalites[0],modalites[1]; p1,p2 = pcts_u.iloc[0],pcts_u.iloc[1]
                         e1,e2 = int(counts_u.iloc[0]),int(counts_u.iloc[1])
-                        st.markdown(f"""<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_label}</b> parmi les {int(total_u)} répondants.</p><p style="margin:0 0 8px;">La modalité dominante est <b>« {m1} »</b> avec <b>{p1:.1f}%</b> des répondants ({e1} personne(s)).</p><p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{p2:.1f}%</b> ({e2} personne(s)). Au total, <b>{n_bars}</b> modalités.</p></div>""", unsafe_allow_html=True)
-                    else: st.caption("Données insuffisantes.")
+                        st.markdown(f"""<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la repartition de <b>{sel_label}</b> parmi les {int(total_u)} repondants.</p><p style="margin:0 0 8px;">La modalite dominante est <b>« {m1} »</b> avec <b>{p1:.1f}%</b> des repondants ({e1} personne(s)).</p><p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{p2:.1f}%</b> ({e2} personne(s)). Au total, <b>{n_bars}</b> modalites.</p></div>""", unsafe_allow_html=True)
+                    else: st.caption("Donnees insuffisantes.")
     
-    # ╔══════════════════════════════════════════════════════════════╗
-    # ║  ONGLET 3 : ANALYSE BIVARIÉE (Médecin uniquement)            ║
-    # ╚══════════════════════════════════════════════════════════════╝
+    # ONGLET 3 : ANALYSE BIVARIEE (Medecin uniquement)
     if onglet3 is not None:
         with onglet3:
-            st.markdown('<div class="section-title">Analyse bivariée</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">Analyse bivariee</div>', unsafe_allow_html=True)
             
-            # Résolution des colonnes
             csp_actual = None
-            for c in ("Categorie Socio", "Catégorie Socio", "CSP"):
+            for c in ("Categorie Socio", "Categorie Socio", "CSP"):
                 if c in df_clean.columns: csp_actual = c; break
             
             alc_col2 = next((c for c in df_clean.columns if re.search(r"consommation.*alcool|alcool", _pp_normalize_text(c))), None)
@@ -843,10 +936,10 @@ def main():
             
             VAR_MAP = {
                 "Genre":                         "genre",
-                "Tranche d'âge":                 "Tranche_dage",
-                "Ancienneté":                    "Tranche_anciennete",
-                "Catégorie socioprofessionnelle": csp_actual or "",
-                "Catégorie IMC":                 "Categorie_IMC",
+                "Tranche d'age":                 "Tranche_dage",
+                "Anciennete":                    "Tranche_anciennete",
+                "Categorie socioprofessionnelle": csp_actual or "",
+                "Categorie IMC":                 "Categorie_IMC",
                 "IMC (normal / surpoids)":       "IMC_binaire",
                 "Direction":                     "direction",
                 "Tabagisme":                     tabac_col2 or "",
@@ -858,30 +951,28 @@ def main():
             CROSS_MAP = {
                 "Aucun croisement":                 None,
                 "Quadrant Karasek":                 quad_col,
-                "Charge mentale (catég.)":          "Dem_score_theo_cat",
-                "Autonomie décisionnelle (catég.)": "Lat_score_theo_cat",
-                "Soutien social (catég.)":          "SS_score_theo_cat",
-                "Reconnaissance (catég.)":          "rec_score_theo_cat",
-                "Satisfaction (catég.)":            "sat_score_theo_cat",
-                "Culture d'entreprise (catég.)":    "cult_score_theo_cat",
-                "Équité de charge (catég.)":        "equ_score_theo_cat",
+                "Charge mentale (categ.)":          "Dem_score_theo_cat",
+                "Autonomie decisionnelle (categ.)": "Lat_score_theo_cat",
+                "Soutien social (categ.)":          "SS_score_theo_cat",
+                "Reconnaissance (categ.)":          "rec_score_theo_cat",
+                "Satisfaction (categ.)":            "sat_score_theo_cat",
+                "Culture d'entreprise (categ.)":    "cult_score_theo_cat",
+                "Equite de charge (categ.)":        "equ_score_theo_cat",
             }
             
             avail_vars  = [k for k, v in VAR_MAP.items()  if v and v in df_clean.columns]
             avail_cross = [k for k, v in CROSS_MAP.items() if v is None or (v and v in df_clean.columns)]
             
             if not avail_vars:
-                st.info("Variables insuffisantes pour l'analyse bivariée.")
+                st.info("Variables insuffisantes pour l'analyse bivariee.")
             else:
                 cx1, cx2 = st.columns(2)
                 with cx1:
-                    st.markdown('<span style="font-size:0.76rem;font-weight:700;color:#2F577F;letter-spacing:0.1em;text-transform:uppercase;">Variable à visualiser</span>', unsafe_allow_html=True)
+                    st.markdown('<span style="font-size:0.76rem;font-weight:700;color:#2F577F;letter-spacing:0.1em;text-transform:uppercase;">Variable a visualiser</span>', unsafe_allow_html=True)
                     sel_var = st.selectbox("Variable", avail_vars, key="cr_var", label_visibility="collapsed")
                 
-                # Déterminer si on affiche l'option Heatmap
                 show_heatmap = (sel_var == "Direction" and dir_col_hm and quad_col and quad_col in df_clean.columns)
                 
-                # Construire la liste des croisements (avec ou sans Heatmap)
                 cross_options = list(avail_cross)
                 if show_heatmap:
                     cross_options = ["Heatmap "] + cross_options
@@ -892,9 +983,7 @@ def main():
                 
                 real_col = VAR_MAP.get(sel_var) if sel_var else None
                 
-                # ══════════════════════════════════════════════════════
                 # HEATMAP
-                # ══════════════════════════════════════════════════════
                 if sel_cross == "Heatmap ":
                     import matplotlib.pyplot as plt
                     from matplotlib.colors import LinearSegmentedColormap
@@ -925,19 +1014,17 @@ def main():
                         ax.tick_params(axis="y", labelsize=9)
                         for spine in ax.spines.values(): spine.set_visible(False)
                     
-                    plt.suptitle("Répartition Karasek par Direction — seuil théorique", fontsize=13, fontweight="bold", y=1.02)
+                    plt.suptitle("Repartition Karasek par Direction — seuil theorique", fontsize=13, fontweight="bold", y=1.02)
                     plt.tight_layout()
                     st.pyplot(fig_hm, use_container_width=True)
                     
                     buf = io.BytesIO()
                     fig_hm.savefig(buf, format="png", dpi=300, bbox_inches="tight")
                     buf.seek(0)
-                    st.download_button("📥 Télécharger PNG", data=buf, file_name="heatmap_direction.png", mime="image/png", key="dl_hm")
+                    st.download_button("Telecharger PNG", data=buf, file_name="heatmap_direction.png", mime="image/png", key="dl_hm")
                     plt.close(fig_hm)
                 
-                # ══════════════════════════════════════════════════════
                 # CROISEMENT STANDARD
-                # ══════════════════════════════════════════════════════
                 else:
                     cross_col = CROSS_MAP.get(sel_cross) if sel_cross else None
                     
@@ -947,7 +1034,7 @@ def main():
                             ct  = pd.crosstab(tmp[real_col].astype(str), tmp[cross_col].astype(str))
                             pct = ct.div(ct.sum(axis=1), axis=0) * 100
                             
-                            bmap = {"Eleve":"#22C55E","Élevé":"#22C55E","Faible":"#EF4444","Présent":"#EF4444","Absent":"#22C55E"}
+                            bmap = {"Eleve":"#22C55E","Eleve":"#22C55E","Faible":"#EF4444","Present":"#EF4444","Absent":"#22C55E"}
                             gen  = ["#38A3E8","#F97316","#22C55E","#EF4444","#A78BFA","#06B6D4"]
                             
                             def gc(cat, idx):
@@ -987,19 +1074,17 @@ def main():
                                 pct_tbl = pct.round(1)
                                 st.dataframe(pct_tbl.style.format("{:.1f}%"), use_container_width=True)
                                 
-                                st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
+                                st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">Interpretation</p>', unsafe_allow_html=True)
                                 lignes, colonnes = list(pct.index), list(pct.columns)
                                 if len(lignes) >= 2 and len(colonnes) >= 1:
                                     l1, l2 = lignes[0], lignes[1]
-                                    st.markdown(f"""<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_cross}</b> selon <b>{sel_var}</b>.</p><p style="margin:0 0 8px;">Par exemple, parmi les <b>« {l1} »</b> : {', '.join([f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0])}.</p><p style="margin:0;">Tandis que parmi les <b>« {l2} »</b> : {', '.join([f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0])}.</p></div>""", unsafe_allow_html=True)
+                                    st.markdown(f"""<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la repartition de <b>{sel_cross}</b> selon <b>{sel_var}</b>.</p><p style="margin:0 0 8px;">Par exemple, parmi les <b>« {l1} »</b> : {', '.join([f'<b>{pct.loc[l1, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l1, c] > 0])}.</p><p style="margin:0;">Tandis que parmi les <b>« {l2} »</b> : {', '.join([f'<b>{pct.loc[l2, c]:.1f}%</b> sont <b>« {c} »</b>' for c in colonnes if pct.loc[l2, c] > 0])}.</p></div>""", unsafe_allow_html=True)
                                 else:
-                                    st.caption("Données insuffisantes.")
+                                    st.caption("Donnees insuffisantes.")
                         else:
-                            st.warning("Données insuffisantes pour ce croisement.")
+                            st.warning("Donnees insuffisantes pour ce croisement.")
                     
-                    # ══════════════════════════════════════════════════════
-                    # UNIVARIÉ
-                    # ══════════════════════════════════════════════════════
+                    # UNIVARIE
                     elif real_col and real_col in df_clean.columns:
                         counts_u = df_clean[real_col].value_counts()
                         total_u = counts_u.sum()
@@ -1008,8 +1093,8 @@ def main():
                         
                         stats_data = []
                         for cat, eff, pct in zip(counts_u.index, counts_u.values, pcts_u.values):
-                            stats_data.append({"Modalité": str(cat), "Effectif": int(eff), "Fréquence": f"{pct:.1f}%"})
-                        stats_data.append({"Modalité": "TOTAL", "Effectif": int(total_u), "Fréquence": "100%"})
+                            stats_data.append({"Modalite": str(cat), "Effectif": int(eff), "Frequence": f"{pct:.1f}%"})
+                        stats_data.append({"Modalite": "TOTAL", "Effectif": int(total_u), "Frequence": "100%"})
                         
                         c_chart, c_table = st.columns([7, 3])
                         with c_chart:
@@ -1035,7 +1120,7 @@ def main():
                                         zeroline=False, tickfont=dict(color="#6B88A8", size=11)),
                                 yaxis=dict(showgrid=False, showline=False, zeroline=False, tickfont=dict(color="#0F2340", size=11)),
                                 height=max(300, n_bars*55+120), margin=dict(l=20, r=80, t=60, b=40),
-                                title=dict(text=f"Répartition selon : {sel_var}", font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"), x=0.5, xanchor="center")
+                                title=dict(text=f"Repartition selon : {sel_var}", font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"), x=0.5, xanchor="center")
                             )
                             st.plotly_chart(fig, use_container_width=True, key="cr_bar")
                         
@@ -1044,17 +1129,18 @@ def main():
                             stats_df = pd.DataFrame(stats_data)
                             st.dataframe(stats_df, use_container_width=True, hide_index=True, height=min(400, 35*(len(stats_data)+1)))
                             
-                            st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>', unsafe_allow_html=True)
+                            st.markdown('<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;text-transform:uppercase;margin:1rem 0 0.5rem;">Interpretation</p>', unsafe_allow_html=True)
                             modalites = list(counts_u.index)
                             if len(modalites) >= 2:
                                 m1, m2 = modalites[0], modalites[1]
                                 p1, p2 = pcts_u.iloc[0], pcts_u.iloc[1]
                                 e1, e2 = int(counts_u.iloc[0]), int(counts_u.iloc[1])
-                                st.markdown(f"""<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la répartition de <b>{sel_var}</b> parmi les {int(total_u)} répondants.</p><p style="margin:0 0 8px;">La modalité dominante est <b>« {m1} »</b> avec <b>{p1:.1f}%</b> des répondants ({e1} personne(s)).</p><p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{p2:.1f}%</b> ({e2} personne(s)). Au total, <b>{n_bars}</b> modalités.</p></div>""", unsafe_allow_html=True)
+                                st.markdown(f"""<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;"><p style="margin:0 0 8px;">Ce graphique montre la repartition de <b>{sel_var}</b> parmi les {int(total_u)} repondants.</p><p style="margin:0 0 8px;">La modalite dominante est <b>« {m1} »</b> avec <b>{p1:.1f}%</b> des repondants ({e1} personne(s)).</p><p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec <b>{p2:.1f}%</b> ({e2} personne(s)). Au total, <b>{n_bars}</b> modalites.</p></div>""", unsafe_allow_html=True)
                             else:
-                                st.caption("Données insuffisantes.")
+                                st.caption("Donnees insuffisantes.")
                     else:
-                        st.info("Sélectionnez une variable pour afficher le graphique.")    
+                        st.info("Selectionnez une variable pour afficher le graphique.")
+    
     st.markdown("---")
     st.markdown(f'<p style="text-align:center;color:#9CA3AF;font-size:0.8rem;">{PAGE_TITLE} — YODAN Analytics © 2026</p>', unsafe_allow_html=True)
 

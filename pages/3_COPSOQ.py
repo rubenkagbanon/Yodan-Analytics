@@ -111,10 +111,7 @@ QUESTION_TEXT_MAP = {
     "Q46": "A quel point etes-vous satisfait(e) de votre travail dans son ensemble, en prenant en consideration tous les aspects ?",
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SOUS-DOMAINES ET DOMAINES RPS (issus de 5_COPSOQ)
-# ══════════════════════════════════════════════════════════════════════════════
-
+# SOUS-DOMAINES ET DOMAINES RPS
 SUBDOMAINS_LABELS = {
     "Charge de travail": ["Q1", "Q2"],
     "Rythme travail": ["Q3", "Q4"],
@@ -205,9 +202,7 @@ _SUBDOMAIN_POLARITY: dict = {
     "Satisfaction au travail": "inverted",
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VARIABLES UNIFORMES POUR LES ANALYSES UNIVARIÉES
-# ══════════════════════════════════════════════════════════════════════════════
+# VARIABLES UNIFORMES POUR LES ANALYSES UNIVARIEES
 VARIABLES_UNIVARIEES = [
     ("Genre", "genre"),
     ("Situation matrimoniale", "situation_matrimoniale"),
@@ -283,7 +278,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
             ops.append(f"Colonne '{c}' supprimée ({pct:.1f}% de valeurs manquantes)")
         cleaned_df = cleaned_df.drop(columns=cols_to_drop)
 
-    # ÂGE
+    # AGE
     age_col = _find_age_numeric_col(cleaned_df)
     if age_col is not None:
         cleaned_df['age'] = pd.to_numeric(cleaned_df[age_col], errors="coerce")
@@ -302,7 +297,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
             else: ops.append("Colonne 'Tranche_dage' déjà présente")
         else: ops.append("Âge: aucune colonne trouvée")
 
-    # ANCIENNETÉ
+    # ANCIENNETE
     anciennete_num_col = _find_by_patterns(list(cleaned_df.columns), [r"anciennete",r"anciennet"])
     if anciennete_num_col is not None:
         if pd.api.types.is_numeric_dtype(cleaned_df[anciennete_num_col]):
@@ -395,7 +390,7 @@ def clean_common_variables(df: pd.DataFrame, missing_threshold: float = 0.55) ->
 
 
 # =============================================================================
-# FONCTIONS DE DÉTECTION COPSOQ — MAPPING Q → colonnes
+# FONCTIONS DE DETECTION COPSOQ — MAPPING Q → colonnes
 # =============================================================================
 
 def trouver_colonne_q(df: pd.DataFrame, qx: str) -> str | None:
@@ -427,7 +422,7 @@ def calculer_indicateur_par_noms(df: pd.DataFrame, qx_list: list) -> float | Non
 
 
 # =============================================================================
-# CALCUL DES SCORES SOUS-DOMAINES (normalisés 0-100 sur l'ensemble du df)
+# CALCUL DES SCORES SOUS-DOMAINES (normalises 0-100 sur l'ensemble du df)
 # =============================================================================
 
 def _to_numeric_safe(series: pd.Series) -> pd.Series:
@@ -435,11 +430,6 @@ def _to_numeric_safe(series: pd.Series) -> pd.Series:
 
 
 def build_df_scores_from_clean(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Construit un DataFrame de scores (0-100) par sous-domaine pour
-    chaque répondant, en cherchant les colonnes Q1..Q46 par fuzzy matching.
-    """
-    # Résoudre les colonnes Q
     q_map = {}
     for qx in QUESTION_TEXT_MAP:
         col = trouver_colonne_q(df, qx)
@@ -453,7 +443,6 @@ def build_df_scores_from_clean(df: pd.DataFrame) -> pd.DataFrame:
             scores[subdomain_name] = np.nan
             continue
         raw = df[available_cols].apply(_to_numeric_safe)
-        # Normaliser 1-5 → 0-100 si nécessaire
         if raw.max().max() <= 5:
             raw = ((raw - 1) / 4 * 100).clip(0, 100)
         scores[subdomain_name] = raw.mean(axis=1)
@@ -461,7 +450,7 @@ def build_df_scores_from_clean(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # =============================================================================
-# FONCTIONS RPS DOMAINES (portées depuis 5_COPSOQ)
+# FONCTIONS RPS DOMAINES
 # =============================================================================
 
 def _normalize_to_four_levels(series: pd.Series) -> pd.Series:
@@ -489,7 +478,6 @@ def _categorize_to_four_levels(series: pd.Series) -> pd.Series:
 
 
 def _build_rps_domain_categories(score_df: pd.DataFrame) -> tuple:
-    """Construit le df catégoriel domaine, domain_map, missing, label_map."""
     out = pd.DataFrame(index=score_df.index)
     domain_map: dict = {}
     missing: list = []
@@ -572,11 +560,11 @@ def _plot_domain_stacked_bar(cat_df: pd.DataFrame, domain_cols: list, title: str
     if mixed:
         leg_risk = ax.legend(handles=patches_risk, ncol=len(ORDER_LEVELS),
                             bbox_to_anchor=(0.5, -0.14), loc="upper center",
-                            frameon=True, title="(1) Items non inversés", title_fontsize=8, fontsize=8)
+                            frameon=True, title="(1) Items non inverses", title_fontsize=8, fontsize=8)
         ax.add_artist(leg_risk)
         ax.legend(handles=patches_good, ncol=len(ORDER_LEVELS),
                 bbox_to_anchor=(0.5, -0.26), loc="upper center",
-                frameon=True, title="(2) Items inversés", title_fontsize=8, fontsize=8)
+                frameon=True, title="(2) Items inverses", title_fontsize=8, fontsize=8)
         fig.subplots_adjust(bottom=0.28)
     elif has_inverted:
         ax.legend(handles=patches_good, ncol=len(ORDER_LEVELS),
@@ -666,11 +654,10 @@ def _style_bivariate_table(ct: pd.DataFrame, subdomain_label: str = ""):
 
 
 # =============================================================================
-# RÉSOLUTION DES COLONNES SOCIO-DÉMOGRAPHIQUES (variables croisables)
+# RESOLUTION DES COLONNES SOCIO-DEMOGRAPHIQUES
 # =============================================================================
 
 def _resolve_socio_columns_clean(df: pd.DataFrame) -> dict:
-    """Retourne un dict {label_affichage: colonne_réelle} sur df_clean."""
     candidates = {
         "Genre": ["genre", "Genre", "Sexe"],
         "Tranche d'âge": ["Tranche_dage", "Tranche d'age", "Tranche age"],
@@ -696,20 +683,18 @@ def _resolve_socio_columns_clean(df: pd.DataFrame) -> dict:
 
 
 # =============================================================================
-# GÉNÉRATION DE L'INTERPRÉTATION AUTOMATIQUE (domaine global + bivarié)
+# GENERATION DE L'INTERPRETATION AUTOMATIQUE
 # =============================================================================
 
 def _interpret_domain_global(domain_table: pd.DataFrame, domain_name: str) -> str:
-    """Génère un texte d'interprétation automatique pour un graphe de domaine (vue globale)."""
     if domain_table.empty:
         return "Données insuffisantes pour l'interprétation."
 
     lines = []
-    lines.append(f"<b>Interprétation — {domain_name}</b>")
-    lines.append(f"Ce graphique présente la répartition de <b>{len(domain_table)}</b> sous-domaine(s) "
-                f"pour l'ensemble des répondants.")
+    lines.append(f"Interpretation — {domain_name}")
+    lines.append(f"Ce graphique presente la repartition de <b>{len(domain_table)}</b> sous-domaine(s) "
+                f"pour l'ensemble des repondants.")
 
-    # Sous-domaine le plus à risque (fort + très fort)
     if "Fort" in domain_table.columns and "Tres fort" in domain_table.columns:
         domain_table = domain_table.copy()
         domain_table["_risk"] = domain_table["Fort"] + domain_table["Tres fort"]
@@ -719,37 +704,34 @@ def _interpret_domain_global(domain_table: pd.DataFrame, domain_name: str) -> st
         polarity = _SUBDOMAIN_POLARITY.get(str(worst_name), "normal")
 
         if polarity == "normal":
-            lines.append(f"Le sous-domaine le plus exposé est <b>« {worst_name} »</b> avec "
-                        f"<b>{worst_pct:.1f}%</b> des répondants en niveaux Fort ou Très fort (exposition élevée).")
+            lines.append(f"Le sous-domaine le plus expose est <b>« {worst_name} »</b> avec "
+                        f"<b>{worst_pct:.1f}%</b> des repondants en niveaux Fort ou Tres fort (exposition elevee).")
         else:
-            # Pour les items inversés, Fort/Très fort = situation favorable
             best = domain_table.sort_values("_risk", ascending=False).iloc[0]
             best_name = best["Sous-domaine"] if "Sous-domaine" in domain_table.columns else "—"
             lines.append(f"Le sous-domaine le plus favorable est <b>« {best_name} »</b> avec "
-                        f"<b>{best['_risk']:.1f}%</b> des répondants à des niveaux élevés (indicateur positif).")
+                        f"<b>{best['_risk']:.1f}%</b> des repondants a des niveaux eleves (indicateur positif).")
 
-    # Sous-domaine le plus faible (très faible + faible)
     if "Tres faible" in domain_table.columns and "Faible" in domain_table.columns:
         domain_table["_low"] = domain_table["Tres faible"] + domain_table["Faible"]
         best_low = domain_table.sort_values("_low", ascending=False).iloc[0]
         best_low_name = best_low["Sous-domaine"] if "Sous-domaine" in domain_table.columns else "—"
-        lines.append(f"À l'inverse, <b>« {best_low_name} »</b> présente le plus fort taux de niveaux Très faible/Faible "
+        lines.append(f"A l'inverse, <b>« {best_low_name} »</b> presente le plus fort taux de niveaux Tres faible/Faible "
                     f"(<b>{best_low['_low']:.1f}%</b>).")
 
     return "<br>".join(lines)
 
 
 def _interpret_bivariate(ct: pd.DataFrame, socio_label: str, subdomain_label: str) -> str:
-    """Génère un texte d'interprétation automatique pour un graphe bivarié."""
     if ct is None or ct.empty:
         return "Données insuffisantes pour l'interprétation."
 
     polarity = _SUBDOMAIN_POLARITY.get(subdomain_label, "normal")
     risk_level = "Tres fort" if polarity == "normal" else "Tres faible"
-    risk_label_text = "Très fort (exposition maximale)" if polarity == "normal" else "Très faible (déficit maximal)"
+    risk_label_text = "Tres fort (exposition maximale)" if polarity == "normal" else "Tres faible (deficit maximal)"
 
     lines = []
-    lines.append(f"<b>Interprétation — {subdomain_label}</b>")
+    lines.append(f"Interpretation — {subdomain_label}")
     lines.append(f"Ce graphique croise <b>{socio_label}</b> avec le sous-domaine <b>« {subdomain_label} »</b>.")
 
     if risk_level in ct.columns:
@@ -760,16 +742,16 @@ def _interpret_bivariate(ct: pd.DataFrame, socio_label: str, subdomain_label: st
             min_mod = risk_col.idxmin()
             min_val = risk_col.min()
             lines.append(
-                f"La modalité <b>« {max_mod} »</b> affiche le taux le plus élevé de niveau {risk_label_text} "
+                f"La modalite <b>« {max_mod} »</b> affiche le taux le plus eleve de niveau {risk_label_text} "
                 f"(<b>{max_val:.1f}%</b>), contre <b>{min_val:.1f}%</b> pour <b>« {min_mod} »</b>."
             )
             diff = max_val - min_val
             if diff >= 20:
-                lines.append(f"L'écart de <b>{diff:.1f} points</b> indique une disparité <b>importante</b> entre les groupes.")
+                lines.append(f"L'ecart de <b>{diff:.1f} points</b> indique une disparite <b>importante</b> entre les groupes.")
             elif diff >= 10:
-                lines.append(f"L'écart de <b>{diff:.1f} points</b> indique une disparité <b>modérée</b> entre les groupes.")
+                lines.append(f"L'ecart de <b>{diff:.1f} points</b> indique une disparite <b>moderee</b> entre les groupes.")
             else:
-                lines.append(f"L'écart de <b>{diff:.1f} points</b> est <b>faible</b> — les groupes sont relativement homogènes.")
+                lines.append(f"L'ecart de <b>{diff:.1f} points</b> est <b>faible</b> — les groupes sont relativement homogenes.")
 
     return "<br>".join(lines)
 
@@ -821,25 +803,25 @@ def _compute_cardio_risk(df: pd.DataFrame) -> tuple:
             score += float((s.isin(['oui','yes','1','vrai','true'])).sum()/n)*w
     score = round(score, 2)
     if score <= 1.5: return score, "Faible", "#16A37F"
-    elif score <= 3.0: return score, "Modéré", "#F5A623"
-    else: return score, "Élevé", "#E8504A"
+    elif score <= 3.0: return score, "Modere", "#F5A623"
+    else: return score, "Eleve", "#E8504A"
 
 
 def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     n = len(df)
     if n_before_cleaning is None: n_before_cleaning = n
 
-    # ÂGE
+    # AGE
     if 'age' in df.columns:
         age_num = pd.to_numeric(df['age'], errors='coerce').dropna()
         if not age_num.empty:
             age_display = f"{int(round(age_num.median()))} ans"
-            age_subtitle = "Âge médian"
+            age_subtitle = "Age median"
         else:
             age_display, age_subtitle = "—", "non disponible"
     elif 'Tranche_dage' in df.columns:
         age_str = df['Tranche_dage'].astype(str).str.strip()
-        age_clean = age_str[~age_str.str.lower().isin(['non renseigné','nan','','none'])]
+        age_clean = age_str[~age_str.str.lower().isin(['non renseigne','nan','','none'])]
         if not age_clean.empty:
             vc = age_clean.value_counts()
             age_display = vc.index[0]
@@ -851,7 +833,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
 
     if 'Tranche_anciennete' in df.columns:
         anc_str = df['Tranche_anciennete'].astype(str).str.strip()
-        anc_clean = anc_str[~anc_str.str.lower().isin(['non renseigné','nan','','none'])]
+        anc_clean = anc_str[~anc_str.str.lower().isin(['non renseigne','nan','','none'])]
         if not anc_clean.empty:
             vc = anc_clean.value_counts()
             anc_display = vc.index[0]
@@ -859,7 +841,7 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
         else: anc_display, anc_subtitle = "—", "non disponible"
     elif 'anciennete' in df.columns:
         anc_num = pd.to_numeric(df['anciennete'], errors='coerce').dropna()
-        if not anc_num.empty: anc_display = f"{round(anc_num.median())} ans"; anc_subtitle = "médiane"
+        if not anc_num.empty: anc_display = f"{round(anc_num.median())} ans"; anc_subtitle = "mediane"
         else: anc_display, anc_subtitle = "—", "non disponible"
     else: anc_display, anc_subtitle = "—", "non disponible"
 
@@ -883,35 +865,126 @@ def render_kpi_row(df: pd.DataFrame, n_before_cleaning: int = None) -> None:
     cardio_score, cardio_label, cardio_color = _compute_cardio_risk(df)
 
     c1,c2,c3,c4,c5 = st.columns(5)
-    with c1: st.markdown(kpi_card("fas fa-users","#1D78F5","#EBF3FF","#1D78F5",n,"",f"sur {n_before_cleaning} observations","Répondants analysés"), unsafe_allow_html=True)
+    with c1: st.markdown(kpi_card("fas fa-users","#1D78F5","#EBF3FF","#1D78F5",n,"",f"sur {n_before_cleaning} observations","Repondants analyses"), unsafe_allow_html=True)
     with c2: st.markdown(kpi_card(genre_icon,genre_color,genre_bg,genre_color,genre_display,"",genre_subtitle,"Genre dominant"), unsafe_allow_html=True)
-    with c3: st.markdown(kpi_card("fas fa-calendar-alt","#16A37F","#E8F8EF","#16A37F",age_display,"",age_subtitle,"Âge"), unsafe_allow_html=True)
-    with c4: st.markdown(kpi_card("fas fa-clock","#F5A623","#FEF5E7","#F5A623",anc_display,"",anc_subtitle,"Ancienneté"), unsafe_allow_html=True)
+    with c3: st.markdown(kpi_card("fas fa-calendar-alt","#16A37F","#E8F8EF","#16A37F",age_display,"",age_subtitle,"Age"), unsafe_allow_html=True)
+    with c4: st.markdown(kpi_card("fas fa-clock","#F5A623","#FEF5E7","#F5A623",anc_display,"",anc_subtitle,"Anciennete"), unsafe_allow_html=True)
     with c5: st.markdown(kpi_card("fas fa-heart",cardio_color,"#FEF0EF",cardio_color,cardio_label,"",f"Score {cardio_score:.1f}/5","Risque cardio-vasc."), unsafe_allow_html=True)
 
 
 # =============================================================================
-# COMPOSANTS INDICATEURS KPI SPÉCIALISÉS
+# FONCTIONS INDICATEURS AVEC COMPARAISON AUTOMATIQUE
 # =============================================================================
 
 def get_priority_info(priorite_type: str) -> tuple:
-    if priorite_type == "risque": return "#EF4444","Risque prioritaire","#EF4444"
-    elif priorite_type == "levier": return "#22C55E","Levier performance","#22C55E"
-    elif priorite_type == "vigilance": return "#F59E0B","Vigilance","#F59E0B"
-    elif priorite_type == "strategique": return "#3B82F6","Stratégique","#3B82F6"
-    elif priorite_type == "protecteur": return "#22C55E","Levier protecteur","#22C55E"
-    return "#6B7280","","#6B7280"
+    """
+    Retourne les informations de style selon le type de priorite
+    
+    Types disponibles:
+    - "risque": couleur rouge, alerte prioritaire
+    - "vigilance": couleur orange, a surveiller
+    - "levier": couleur verte, performance OK
+    - "strategique": couleur bleue, suivi strategique
+    - "protecteur": couleur verte, levier protecteur
+    """
+    if priorite_type == "risque":
+        return "#EF4444", "Risque prioritaire", "#EF4444"
+    elif priorite_type == "levier":
+        return "#22C55E", "Levier performance", "#22C55E"
+    elif priorite_type == "vigilance":
+        return "#F59E0B", "Vigilance", "#F59E0B"
+    elif priorite_type == "strategique":
+        return "#3B82F6", "Suivi strategique", "#3B82F6"
+    elif priorite_type == "protecteur":
+        return "#22C55E", "Levier protecteur", "#22C55E"
+    return "#6B7280", "Information", "#6B7280"
 
 
-def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type: str) -> str:
+def comparer_valeur_seuil(valeur, seuil, operateur: str) -> bool:
+    """
+    Compare une valeur avec un seuil selon l'operateur
+    Retourne True si la condition est vraie (indique un danger/alerte)
+    """
+    try:
+        if isinstance(valeur, str):
+            valeur_clean = valeur.replace('%', '').replace(',', '.').strip()
+            val_num = float(valeur_clean)
+        else:
+            val_num = float(valeur)
+        
+        if isinstance(seuil, str):
+            seuil_clean = seuil.replace('%', '').replace(',', '.').strip()
+            seuil_num = float(seuil_clean)
+        else:
+            seuil_num = float(seuil)
+        
+        if operateur == ">":
+            return val_num > seuil_num
+        elif operateur == ">=":
+            return val_num >= seuil_num
+        elif operateur == "<":
+            return val_num < seuil_num
+        elif operateur == "<=":
+            return val_num <= seuil_num
+        elif operateur == "==" or operateur == "=":
+            return val_num == seuil_num
+        else:
+            return val_num > seuil_num
+    except (ValueError, TypeError):
+        return False
+
+
+def get_dynamic_priority(valeur, seuil: str, operateur: str, priorite_alerte: str) -> tuple:
+    """
+    Determine dynamiquement la priorite a afficher en comparant la valeur avec le seuil
+    
+    Regles:
+    - Si la valeur DEPASSE le seuil (comparaison selon operateur) -> on applique priorite_alerte
+    - Sinon -> c'est "levier performance" (vert) car c'est bon
+    """
+    seuil_depasse = comparer_valeur_seuil(valeur, seuil, operateur)
+    
+    if seuil_depasse:
+        return get_priority_info(priorite_alerte)
+    else:
+        return get_priority_info("levier")
+
+
+def render_indicator_card(nom: str, valeur, seuil: str = None, operateur: str = "", priorite_type: str = "levier") -> str:
+    """
+    Affiche une carte d'indicateur avec style determine dynamiquement
+    
+    Parametres:
+    - nom: Nom de l'indicateur
+    - valeur: Valeur a afficher (sera convertie en str)
+    - seuil: Valeur seuil (optionnel)
+    - operateur: Operateur de comparaison (">", "<", ">=", "<=")
+    - priorite_type: Priorite a afficher SI le seuil est depasse
+    """
     if valeur is None:
         return ('<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:12px;padding:16px;'
                 'text-align:center;min-height:170px;display:flex;align-items:center;justify-content:center;">'
-                '<p style="color:#94A3B8;font-size:0.85rem;">Données<br>insuffisantes</p></div>')
-    bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+                '<p style="color:#94A3B8;font-size:0.85rem;">Donnees<br>insuffisantes</p></div>')
+    
+    # Determiner dynamiquement la priorite a afficher
+    if seuil is not None and operateur:
+        bordure_color, priorite_texte, priorite_color = get_dynamic_priority(
+            valeur, seuil, operateur, priorite_type
+        )
+    else:
+        bordure_color, priorite_texte, priorite_color = get_priority_info(priorite_type)
+    
     priorite_bg = bordure_color + "18"
-    seuil_str = f"Seuil {operateur} {seuil}/100" if seuil is not None else ""
-    valeur_str = str(valeur); taille_police = "36px" if len(valeur_str) <= 10 else "22px"
+    seuil_str = ""
+    if seuil is not None:
+        if operateur:
+            seuil_str = f"Seuil {operateur} {seuil}/100"
+        else:
+            seuil_str = f"Seuil : {seuil}"
+    
+    valeur_str = str(valeur)
+    taille_police = "36px" if len(valeur_str) <= 10 else "22px"
+    
     return (
         f'<div style="background:#FFFFFF;border:1px solid #E3EAF4;border-radius:14px;'
         f'padding:20px 14px 16px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,0.06);'
@@ -928,7 +1001,7 @@ def render_indicator_card(nom: str, valeur, seuil, operateur: str, priorite_type
 
 
 # =============================================================================
-# CHARGEMENT DES DONNÉES
+# CHARGEMENT DES DONNEES
 # =============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -941,7 +1014,7 @@ def load_data_from_bytes(file_bytes: bytes, file_name: str) -> pd.DataFrame:
 
 
 # =============================================================================
-# POINT D'ENTRÉE STREAMLIT
+# POINT D'ENTREE STREAMLIT
 # =============================================================================
 
 def main():
@@ -991,7 +1064,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # ── TOPBAR ───────────────────────────────────────────────────────────────
+    # TOPBAR
     col_top, col_switch, col_back = st.columns([5, 3, 1])
 
     with col_top:
@@ -1022,7 +1095,8 @@ def main():
     with col_back:
         if st.button("← Accueil", key=f"back_home_{PAGE_KEY}", use_container_width=True):
             st.switch_page("app.py")
-    # ── UPLOAD ───────────────────────────────────────────────────────────────
+    
+    # UPLOAD
     uploaded_file = st.file_uploader(
         "Charger un fichier Excel ou CSV", type=["xlsx","xls","csv"], key=f"uploader_{PAGE_KEY}"
     )
@@ -1030,13 +1104,13 @@ def main():
         st.session_state[f"_file_bytes_{PAGE_KEY}"] = uploaded_file.read()
         st.session_state[f"_file_name_{PAGE_KEY}"] = uploaded_file.name
     if f"_file_bytes_{PAGE_KEY}" not in st.session_state:
-        st.info("Veuillez charger un fichier de données pour démarrer l'analyse.")
+        st.info("Veuillez charger un fichier de donnees pour demarrer l'analyse.")
         st.stop()
 
     file_bytes = st.session_state[f"_file_bytes_{PAGE_KEY}"]
     file_name  = st.session_state[f"_file_name_{PAGE_KEY}"]
 
-    with st.spinner("Chargement et traitement des données…"):
+    with st.spinner("Chargement et traitement des donnees…"):
         df_raw = load_data_from_bytes(file_bytes, file_name)
         n_before = len(df_raw)
         df_clean, cleaning_log = clean_common_variables(df_raw)
@@ -1044,44 +1118,36 @@ def main():
     with st.expander("Journal de nettoyage", expanded=False):
         st.text(cleaning_log)
         st.text(f"Questions COPSOQ : {sum(1 for qx in QUESTION_TEXT_MAP if trouver_colonne_q(df_clean, qx) is not None)}/46")
-        st.write(f"Avant: **{n_before}** — Après: **{len(df_clean)}**")
+        st.write(f"Avant: **{n_before}** — Apres: **{len(df_clean)}**")
 
     if df_clean.empty:
-        st.error("Aucune donnée exploitable.")
+        st.error("Aucune donnee exploitable.")
         st.stop()
 
-    # ── VÉRIFICATION COPSOQ ──────────────────────────────────────────────────
+    # VERIFICATION COPSOQ
     q_trouvees = sum(1 for qx in QUESTION_TEXT_MAP if trouver_colonne_q(df_clean, qx) is not None)
     if q_trouvees < 46:
         st.error(
-            f"❌ **Fichier non reconnu comme un questionnaire COPSOQ**\n\n"
-            f"Seulement **{q_trouvees}/46** questions détectées.\n\n"
-            f"**Solution :** Chargez ce fichier dans le module approprié."
+            f"ERREUR - Fichier non reconnu comme un questionnaire COPSOQ\n\n"
+            f"Seulement **{q_trouvees}/46** questions detectees.\n\n"
+            f"Solution : Chargez ce fichier dans le module approprie."
         )
         st.stop()
 
-    # ── CALCUL DES SCORES ───────────────────────────────────────────────────
+    # CALCUL DES SCORES
     with st.spinner("Calcul des scores COPSOQ…"):
         df_scores = build_df_scores_from_clean(df_clean)
         domain_cat_df, domain_map, missing_domains, domain_label_map = _build_rps_domain_categories(df_scores)
 
-    # ── ONGLETS ─────────────────────────────────────────────────────────────
+    # ONGLETS
     if is_medecin(current_mode):
-        onglet1, onglet2, onglet3 = st.tabs(["Vue d'ensemble", "Analyses univariées", "Analyse bivariée"])
+        onglet1, onglet2, onglet3 = st.tabs(["Vue d'ensemble", "Analyses univariees", "Analyse bivariee"])
     else:
-        onglet1, onglet2 = st.tabs(["Vue d'ensemble", "Analyses univariées"])
+        onglet1, onglet2 = st.tabs(["Vue d'ensemble", "Analyses univariees"])
         onglet3 = None
 
-    # ╔══════════════════════════════════════════════════════════╗
-    # ║  ONGLET 1 : VUE D'ENSEMBLE                              ║
-    # ╚══════════════════════════════════════════════════════════╝
-    # ╔══════════════════════════════════════════════════════════╗
-    # ║  ONGLET 1 : VUE D'ENSEMBLE                              ║
-    # ╚══════════════════════════════════════════════════════════╝
+    # ONGLET 1 : VUE D'ENSEMBLE
     with onglet1:
-        # ════════════════════════════════════════════════════════════
-        # FILTRES (spécifiques à l'onglet 1)
-        # ════════════════════════════════════════════════════════════
         FILTER_VARS = [
             ("Genre", "genre"),
             ("Situation matrimoniale", "situation_matrimoniale"),
@@ -1103,29 +1169,29 @@ def main():
         
         cat_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and not pd.api.types.is_numeric_dtype(df_clean[c])]
         num_vars = [(l, c) for l, c in FILTER_VARS if c in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean[c])]
-        # Ajouter l'âge numérique s'il existe
+        
         if 'age' in df_clean.columns and pd.api.types.is_numeric_dtype(df_clean['age']):
-            num_vars.append(("Âge", "age"))
+            num_vars.append(("Age", "age"))
         
         with st.expander("Filtres", expanded=False):
             fc1, fc2, fc3, fc4 = st.columns([3, 3, 3, 1.5])
             
             with fc1:
                 cat_labels = ["— Aucun —"] + [l for l, _ in cat_vars]
-                sel_cat_label = st.selectbox("Variable (catégorielle)", cat_labels, key="cop_filtre_cat")
+                sel_cat_label = st.selectbox("Variable (categorielle)", cat_labels, key="cop_filtre_cat")
             
             with fc2:
                 if sel_cat_label != "— Aucun —":
                     cat_col = dict(cat_vars)[sel_cat_label]
                     modalites = sorted(df_clean[cat_col].dropna().astype(str).unique().tolist())
-                    sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalites, key="cop_filtre_mod")
+                    sel_modalite = st.selectbox("Modalite", ["Toutes"] + modalites, key="cop_filtre_mod")
                 else:
                     sel_modalite = "Toutes"
-                    st.selectbox("Modalité", ["Toutes"], disabled=True)
+                    st.selectbox("Modalite", ["Toutes"], disabled=True)
             
             with fc3:
                 num_labels = ["— Aucun —"] + [l for l, _ in num_vars]
-                sel_num_label = st.selectbox("Variable (numérique)", num_labels, key="cop_filtre_num")
+                sel_num_label = st.selectbox("Variable (numerique)", num_labels, key="cop_filtre_num")
                 
                 if sel_num_label != "— Aucun —":
                     num_col = dict(num_vars)[sel_num_label]
@@ -1143,13 +1209,12 @@ def main():
             
             with fc4:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Réinitialiser", key="cop_reset_filtres", use_container_width=True):
+                if st.button("Reinitialiser", key="cop_reset_filtres", use_container_width=True):
                     for k in ["cop_filtre_cat", "cop_filtre_mod", "cop_filtre_num", "cop_filtre_range"]:
                         if k in st.session_state:
                             del st.session_state[k]
                     st.rerun()
         
-        # Appliquer les filtres UNIQUEMENT pour l'onglet 1
         mask = pd.Series(True, index=df_clean.index)
         
         if sel_cat_label != "— Aucun —" and sel_modalite != "Toutes":
@@ -1164,23 +1229,20 @@ def main():
         df_filtered = df_clean[mask].copy()
         
         if len(df_filtered) == 0:
-            st.warning("Aucune donnée ne correspond aux filtres sélectionnés.")
+            st.warning("Aucune donnee ne correspond aux filtres selectionnes.")
             st.stop()
         
-        # ════════════════════════════════════════════════════════════
-        # CONTENU DE L'ONGLET 1 (utilise df_filtered)
-        # ════════════════════════════════════════════════════════════
-        st.markdown('<div class="section-title">Données Générales de la Population</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Donnees Generales de la Population</div>', unsafe_allow_html=True)
         render_kpi_row(df_filtered, n_before_cleaning=n_before)
 
         if is_rh(current_mode):
             st.markdown('<div class="section-title">Indicateurs RH/DG</div>', unsafe_allow_html=True)
             indicateurs_rh = [
-                {"nom": "Score contraintes quantitatives", "questions": ["Q1","Q2","Q3","Q4","Q5","Q6"], "seuil": 55, "operateur": ">", "priorite_type": "risque"},
-                {"nom": "Niveau de reconnaissance perçue", "questions": ["Q9","Q10"], "seuil": 50, "operateur": "<", "priorite_type": "levier"},
-                {"nom": "Qualité du leadership", "questions": ["Q17","Q18"], "seuil": 50, "operateur": "<", "priorite_type": "vigilance"},
-                {"nom": "Sens du travail", "questions": ["Q42","Q43"], "seuil": 50, "operateur": "<", "priorite_type": "strategique"},
-                {"nom": "Insécurité professionnelle", "questions": ["Q40","Q41"], "seuil": 50, "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Score contraintes quantitatives", "questions": ["Q1","Q2","Q3","Q4","Q5","Q6"], "seuil": "55", "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Niveau de reconnaissance percue", "questions": ["Q9","Q10"], "seuil": "50", "operateur": "<", "priorite_type": "levier"},
+                {"nom": "Qualite du leadership", "questions": ["Q17","Q18"], "seuil": "50", "operateur": "<", "priorite_type": "vigilance"},
+                {"nom": "Sens du travail", "questions": ["Q42","Q43"], "seuil": "50", "operateur": "<", "priorite_type": "strategique"},
+                {"nom": "Insecurite professionnelle", "questions": ["Q40","Q41"], "seuil": "50", "operateur": ">", "priorite_type": "risque"},
             ]
             cols = st.columns(5)
             for i, indic in enumerate(indicateurs_rh):
@@ -1194,13 +1256,13 @@ def main():
                     ), unsafe_allow_html=True)
 
         if is_medecin(current_mode):
-            st.markdown('<div class="section-title">Indicateurs Médecin du Travail</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">Indicateurs Medecin du Travail</div>', unsafe_allow_html=True)
             indicateurs_med = [
-                {"nom": "Score d'épuisement professionnel", "questions": ["Q34","Q35"], "seuil": 60, "operateur": ">", "priorite_type": "risque"},
-                {"nom": "Exigences émotionnelles", "questions": ["Q36","Q37"], "seuil": 60, "operateur": ">", "priorite_type": "risque"},
-                {"nom": "Conflit travail–famille", "questions": ["Q38","Q39"], "seuil": 50, "operateur": ">", "priorite_type": "vigilance"},
-                {"nom": "Santé auto-évaluée (SAE)", "questions": ["Q31"], "seuil": 50, "operateur": "<", "priorite_type": "risque"},
-                {"nom": "Soutien social du superviseur", "questions": ["Q19","Q20"], "seuil": 40, "operateur": "<", "priorite_type": "protecteur"},
+                {"nom": "Score d'epuisement professionnel", "questions": ["Q34","Q35"], "seuil": "60", "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Exigences emotionnelles", "questions": ["Q36","Q37"], "seuil": "60", "operateur": ">", "priorite_type": "risque"},
+                {"nom": "Conflit travail–famille", "questions": ["Q38","Q39"], "seuil": "50", "operateur": ">", "priorite_type": "vigilance"},
+                {"nom": "Sante auto-evaluee (SAE)", "questions": ["Q31"], "seuil": "50", "operateur": "<", "priorite_type": "risque"},
+                {"nom": "Soutien social du superviseur", "questions": ["Q19","Q20"], "seuil": "40", "operateur": "<", "priorite_type": "protecteur"},
             ]
             cols = st.columns(5)
             for i, indic in enumerate(indicateurs_med):
@@ -1212,11 +1274,10 @@ def main():
                         seuil=indic["seuil"], operateur=indic["operateur"],
                         priorite_type=indic["priorite_type"]
                     ), unsafe_allow_html=True)
-    # ╔══════════════════════════════════════════════════════════╗
-    # ║  ONGLET 2 : ANALYSES UNIVARIÉES                         ║
-    # ╚══════════════════════════════════════════════════════════╝
+
+    # ONGLET 2 : ANALYSES UNIVARIEES
     with onglet2:
-        st.markdown('<div class="section-title">Analyses univariées</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Analyses univariees</div>', unsafe_allow_html=True)
 
         VAR_OPTIONS = {}
         for label, col in VARIABLES_UNIVARIEES:
@@ -1228,7 +1289,7 @@ def main():
         else:
             c_sel, _ = st.columns([1, 2])
             with c_sel:
-                sel_label = st.selectbox("Variable à visualiser", list(VAR_OPTIONS.keys()), key="uni_copsoq")
+                sel_label = st.selectbox("Variable a visualiser", list(VAR_OPTIONS.keys()), key="uni_copsoq")
             sel_col = VAR_OPTIONS.get(sel_label)
 
             if sel_col and sel_col in df_clean.columns:
@@ -1239,8 +1300,8 @@ def main():
 
                 stats_data = []
                 for cat, eff, pct in zip(counts_u.index, counts_u.values, pcts_u.values):
-                    stats_data.append({"Modalité": str(cat), "Effectif": int(eff), "Fréquence": f"{pct:.1f}%"})
-                stats_data.append({"Modalité": "TOTAL", "Effectif": int(total_u), "Fréquence": "100%"})
+                    stats_data.append({"Modalite": str(cat), "Effectif": int(eff), "Frequence": f"{pct:.1f}%"})
+                stats_data.append({"Modalite": "TOTAL", "Effectif": int(total_u), "Frequence": "100%"})
 
                 c_chart, c_table = st.columns([7, 3])
                 with c_chart:
@@ -1267,7 +1328,7 @@ def main():
                                 tickfont=dict(color="#0F2340", size=11)),
                         height=max(300, n_bars*55+120),
                         margin=dict(l=20, r=80, t=60, b=40),
-                        title=dict(text=f"Répartition selon : {sel_label}",
+                        title=dict(text=f"Repartition selon : {sel_label}",
                                 font=dict(size=14, color="#0F2340", family="Plus Jakarta Sans"),
                                 x=0.5, xanchor="center")
                     )
@@ -1285,7 +1346,7 @@ def main():
 
                     st.markdown(
                         '<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;'
-                        'text-transform:uppercase;margin:1rem 0 0.5rem;">💡 Interprétation</p>',
+                        'text-transform:uppercase;margin:1rem 0 0.5rem;">Interpretation</p>',
                         unsafe_allow_html=True
                     )
                     modalites = list(counts_u.index)
@@ -1297,88 +1358,72 @@ def main():
                             f'<div style="background:#F8FAFC;border:1px solid #E3EAF4;border-radius:10px;'
                             f'padding:14px 16px;font-size:12px;color:#475569;line-height:1.7;'
                             f'font-family:\'Plus Jakarta Sans\',sans-serif;">'
-                            f'<p style="margin:0 0 8px;">Ce graphique montre la répartition de '
-                            f'<b>{sel_label}</b> parmi les {int(total_u)} répondants.</p>'
-                            f'<p style="margin:0 0 8px;">La modalité dominante est <b>« {m1} »</b> avec '
-                            f'<b>{p1:.1f}%</b> des répondants ({e1} personne(s)).</p>'
+                            f'<p style="margin:0 0 8px;">Ce graphique montre la repartition de '
+                            f'<b>{sel_label}</b> parmi les {int(total_u)} repondants.</p>'
+                            f'<p style="margin:0 0 8px;">La modalite dominante est <b>« {m1} »</b> avec '
+                            f'<b>{p1:.1f}%</b> des repondants ({e1} personne(s)).</p>'
                             f'<p style="margin:0;">Elle est suivie par <b>« {m2} »</b> avec '
-                            f'<b>{p2:.1f}%</b> ({e2} personne(s)). Au total, <b>{n_bars}</b> modalités.</p>'
+                            f'<b>{p2:.1f}%</b> ({e2} personne(s)). Au total, <b>{n_bars}</b> modalites.</p>'
                             f'</div>',
                             unsafe_allow_html=True
                         )
                     else:
-                        st.caption("Données insuffisantes.")
+                        st.caption("Donnees insuffisantes.")
 
-    # ╔══════════════════════════════════════════════════════════════════════╗
-    # ║  ONGLET 3 : ANALYSE BIVARIÉE — Domaines × Démographie              ║
-    # ╚══════════════════════════════════════════════════════════════════════╝
+    # ONGLET 3 : ANALYSE BIVARIEE
     if onglet3 is not None:
         with onglet3:
             st.markdown('<div class="section-title">Domaines et sous-domaines RPS</div>', unsafe_allow_html=True)
 
-            # ── Vérification disponibilité domaines ──────────────────────────
             domain_choices = [grp for grp, cols in domain_map.items() if cols]
             socio_columns  = _resolve_socio_columns_clean(df_clean)
 
             if not domain_choices:
-                st.warning("Aucun domaine exploitable détecté avec les colonnes disponibles.")
+                st.warning("Aucun domaine exploitable detecte avec les colonnes disponibles.")
                 st.stop()
 
-            # ── SÉLECTEURS ────────────────────────────────────────────────────
             st.markdown(
                 '<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1px;'
-                'text-transform:uppercase;margin-bottom:0.4rem;">Sélection</p>',
+                'text-transform:uppercase;margin-bottom:0.4rem;">Selection</p>',
                 unsafe_allow_html=True
             )
             sel_c1, sel_c2, sel_c3 = st.columns([2, 2, 2])
 
             with sel_c1:
-                # Domaines + sous-domaines dans la liste déroulante
-                # On construit une liste hiérarchique :
-                # - Les 6 domaines principaux
-                # - Séparateur, puis tous les sous-domaines croisables
                 domain_options = list(domain_choices)
-
-                # Construire la liste des sous-domaines disponibles (ceux qui ont une colonne __Categorie)
                 subdomain_options = []
                 for grp, cols in domain_map.items():
                     for cat_col in cols:
                         if cat_col in domain_cat_df.columns:
                             label = domain_label_map.get(cat_col, cat_col)
                             subdomain_options.append(f"↳ {label}")
-
                 all_options = domain_options + (["─── Sous-domaines ───"] + subdomain_options if subdomain_options else [])
                 selected_group = st.selectbox("Domaine / Sous-domaine", all_options, key="bivar_domain_sel")
 
             with sel_c2:
                 socio_list = ["Aucun croisement"] + list(socio_columns.keys())
-                sel_socio = st.selectbox("Variable démographique", socio_list, key="bivar_socio_sel")
+                sel_socio = st.selectbox("Variable demographique", socio_list, key="bivar_socio_sel")
 
             with sel_c3:
-                # Modalité (disponible seulement si variable démographique choisie)
                 if sel_socio != "Aucun croisement" and sel_socio in socio_columns:
                     socio_col = socio_columns[sel_socio]
                     modalities = sorted(df_clean[socio_col].dropna().astype(str).unique().tolist())
-                    sel_modalite = st.selectbox("Modalité", ["Toutes"] + modalities, key="bivar_modalite_sel")
+                    sel_modalite = st.selectbox("Modalite", ["Toutes"] + modalities, key="bivar_modalite_sel")
                 else:
                     sel_modalite = "Toutes"
-                    st.selectbox("Modalité", ["Toutes"], key="bivar_modalite_sel_disabled", disabled=True)
+                    st.selectbox("Modalite", ["Toutes"], key="bivar_modalite_sel_disabled", disabled=True)
 
             st.markdown("<hr style='border-color:#E3EAF4;margin:0.5rem 0 1rem;'>", unsafe_allow_html=True)
 
-            # ── RÉSOLUTION DE LA SÉLECTION ────────────────────────────────────
             is_subdomain = selected_group.startswith("↳ ")
             is_separator = selected_group.startswith("─")
 
             if is_separator:
-                st.info("Sélectionnez un domaine ou un sous-domaine dans la liste.")
+                st.info("Selectionnez un domaine ou un sous-domaine dans la liste.")
                 st.stop()
 
-            # Déterminer les colonnes catégorielles à afficher
             if is_subdomain:
-                # Sous-domaine unique
-                subdomain_label = selected_group[2:].strip()  # enlever "↳ "
-                # Retrouver la cat_col correspondante
+                subdomain_label = selected_group[2:].strip()
                 target_cat_col = None
                 target_domain_name = None
                 for grp, cols in domain_map.items():
@@ -1393,23 +1438,21 @@ def main():
                 display_title   = subdomain_label
                 is_single_subdomain = True
             else:
-                # Domaine complet
                 display_cols    = domain_map.get(selected_group, [])
                 display_title   = selected_group
                 is_single_subdomain = False
 
             if not display_cols:
-                st.warning(f"Aucune donnée disponible pour « {selected_group} ».")
+                st.warning(f"Aucune donnee disponible pour « {selected_group} ».")
                 st.stop()
 
-            # ── VUE GLOBALE (Aucun croisement) ────────────────────────────────
             if sel_socio == "Aucun croisement":
                 c_chart_g, c_interp_g = st.columns([7, 3])
 
                 with c_chart_g:
                     fig_global = _plot_domain_stacked_bar(
                         domain_cat_df, display_cols,
-                        f"Répartition des employés — {display_title}",
+                        f"Repartition des employes — {display_title}",
                         domain_label_map
                     )
                     if fig_global is not None:
@@ -1417,19 +1460,19 @@ def main():
                         if png_bytes:
                             fname = re.sub(r"[^a-zA-Z0-9_-]", "_", display_title)
                             st.download_button(
-                                "⬇ Télécharger PNG", data=png_bytes,
+                                "Telecharger PNG", data=png_bytes,
                                 file_name=f"{fname}.png", mime="image/png",
                                 key=f"dl_global_{fname}"
                             )
                         st.pyplot(fig_global, use_container_width=True)
                         plt.close(fig_global)
                     else:
-                        st.warning("Impossible de générer le graphique.")
+                        st.warning("Impossible de generer le graphique.")
 
                 with c_interp_g:
                     st.markdown(
                         '<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;'
-                        'text-transform:uppercase;margin-bottom:0.8rem;">💡 Interprétation</p>',
+                        'text-transform:uppercase;margin-bottom:0.8rem;">Interpretation</p>',
                         unsafe_allow_html=True
                     )
                     domain_tbl = _domain_distribution_table(domain_cat_df, display_cols, domain_label_map)
@@ -1443,15 +1486,12 @@ def main():
                         )
                         st.dataframe(_style_domain_table(domain_tbl), use_container_width=True)
                     else:
-                        st.info("Données insuffisantes pour ce domaine.")
+                        st.info("Donnees insuffisantes pour ce domaine.")
 
-            # ── VUE CROISÉE (variable démographique sélectionnée) ─────────────
             else:
                 socio_col = socio_columns[sel_socio]
 
                 if not is_single_subdomain:
-                    # ── CAS 1 : Domaine complet + variable démographique
-                    # On filtre le df selon la modalité choisie
                     if sel_modalite != "Toutes":
                         mask = df_clean[socio_col].astype(str) == sel_modalite
                         subset_idx = df_clean[mask].index
@@ -1461,13 +1501,13 @@ def main():
                     cat_subset = domain_cat_df.loc[domain_cat_df.index.intersection(subset_idx)]
 
                     if cat_subset.empty:
-                        st.warning("Aucune donnée disponible pour ce filtre.")
+                        st.warning("Aucune donnee disponible pour ce filtre.")
                         st.stop()
 
                     st.markdown(
                         f'<p style="font-size:13px;font-weight:600;color:#334866;margin-bottom:0.5rem;">'
                         f'{"Vue globale" if sel_modalite == "Toutes" else f"{sel_socio} = {sel_modalite}"}'
-                        f' — {len(cat_subset)} répondants</p>',
+                        f' — {len(cat_subset)} repondants</p>',
                         unsafe_allow_html=True
                     )
 
@@ -1475,7 +1515,7 @@ def main():
                     with c_chart_d:
                         fig_dom = _plot_domain_stacked_bar(
                             cat_subset, display_cols,
-                            f"Répartition — {display_title} "
+                            f"Repartition — {display_title} "
                             f"({'Tous' if sel_modalite == 'Toutes' else f'{sel_socio}={sel_modalite}'})",
                             domain_label_map
                         )
@@ -1484,19 +1524,19 @@ def main():
                             if png_bytes:
                                 fname = re.sub(r"[^a-zA-Z0-9_-]", "_", f"{display_title}_{sel_modalite}")
                                 st.download_button(
-                                    "⬇ Télécharger PNG", data=png_bytes,
+                                    "Telecharger PNG", data=png_bytes,
                                     file_name=f"{fname}.png", mime="image/png",
                                     key=f"dl_cross_dom_{fname}"
                                 )
                             st.pyplot(fig_dom, use_container_width=True)
                             plt.close(fig_dom)
                         else:
-                            st.warning("Impossible de générer le graphique.")
+                            st.warning("Impossible de generer le graphique.")
 
                     with c_interp_d:
                         st.markdown(
                             '<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;'
-                            'text-transform:uppercase;margin-bottom:0.8rem;">💡 Interprétation</p>',
+                            'text-transform:uppercase;margin-bottom:0.8rem;">Interpretation</p>',
                             unsafe_allow_html=True
                         )
                         domain_tbl = _domain_distribution_table(cat_subset, display_cols, domain_label_map)
@@ -1514,18 +1554,15 @@ def main():
                             )
                             st.dataframe(_style_domain_table(domain_tbl), use_container_width=True)
                         else:
-                            st.info("Données insuffisantes.")
+                            st.info("Donnees insuffisantes.")
 
                 else:
-                    # ── CAS 2 : Sous-domaine unique × variable démographique
-                    # Graphique bivarié (barres empilées par modalité socio)
                     outcome_series = domain_cat_df[target_cat_col] if target_cat_col in domain_cat_df.columns else None
 
                     if outcome_series is None:
-                        st.warning(f"Colonne catégorielle introuvable pour « {subdomain_label} ».")
+                        st.warning(f"Colonne categorielle introuvable pour « {subdomain_label} ».")
                         st.stop()
 
-                    # Filtrer selon modalité
                     if sel_modalite != "Toutes":
                         mask = df_clean[socio_col].astype(str) == sel_modalite
                         idx  = df_clean[mask].index
@@ -1538,21 +1575,21 @@ def main():
                     ct = _bivariate_table(socio_s, outcome_s)
 
                     if ct is None:
-                        st.warning("Pas de données exploitables pour ce croisement.")
+                        st.warning("Pas de donnees exploitables pour ce croisement.")
                         st.stop()
 
                     c_chart_b, c_interp_b = st.columns([7, 3])
                     with c_chart_b:
                         fig_biv = _plot_bivariate_stacked(
                             ct,
-                            f"Répartition des employés — {sel_socio} selon {subdomain_label}",
+                            f"Repartition des employes — {sel_socio} selon {subdomain_label}",
                             subdomain_label=subdomain_label
                         )
                         png_bytes = _fig_to_png_bytes(fig_biv)
                         if png_bytes:
                             fname = re.sub(r"[^a-zA-Z0-9_-]", "_", f"{sel_socio}_x_{subdomain_label}")
                             st.download_button(
-                                "⬇ Télécharger PNG", data=png_bytes,
+                                "Telecharger PNG", data=png_bytes,
                                 file_name=f"{fname}.png", mime="image/png",
                                 key=f"dl_biv_{fname}"
                             )
@@ -1562,7 +1599,7 @@ def main():
                     with c_interp_b:
                         st.markdown(
                             '<p style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:1.2px;'
-                            'text-transform:uppercase;margin-bottom:0.8rem;">💡 Interprétation</p>',
+                            'text-transform:uppercase;margin-bottom:0.8rem;">Interpretation</p>',
                             unsafe_allow_html=True
                         )
                         interp_html = _interpret_bivariate(ct, sel_socio, subdomain_label)
