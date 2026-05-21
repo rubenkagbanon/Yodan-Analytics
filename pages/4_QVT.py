@@ -705,7 +705,7 @@ def render_tab_overview(df, mode, n_before, question_map):
 
         indicateurs_med = [
             {"nom": "Adequation des ressources aux taches", "valeur": f"{adq_score:.1f}" if adq_score is not None else "N/A", "seuil": "60", "operateur": "<", "priorite_type": "risque"},
-            {"nom": "Charge physique du poste", "valeur": charge_display, "seuil": "Modere", "operateur": ">=", "priorite_type": "risque"},
+            {"nom": "Charge physique du poste", "valeur": charge_display, "seuil": "Modere", "operateur": "", "priorite_type": "risque"},
             {"nom": "Conflit de role et ambiguite", "valeur": f"{conflit_score:.1f}" if conflit_score is not None else "N/A", "seuil": "50", "operateur": ">", "priorite_type": "vigilance"},
             {"nom": "Equilibre vie pro / privee", "valeur": f"{equilibre_score:.1f}" if equilibre_score is not None else "N/A", "seuil": "50", "operateur": "<", "priorite_type": "vigilance"},
             {"nom": "Reconnaissance et equite (ERI)", "valeur": f"{equite_score:.1f}" if equite_score is not None else "N/A", "seuil": "66", "operateur": "<", "priorite_type": "risque"},
